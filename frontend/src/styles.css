@@ -1,0 +1,151 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --border: #2a2a2a;
+  --text: #e0e0e0;
+  --text-muted: #666;
+  --accent: #ff2d78;
+  --accent-hover: #ff5c96;
+  --title: #00e8c8;
+  --error: #ff4444;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+input, textarea {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: inherit;
+  padding: 8px 12px;
+  border-radius: 4px;
+  width: 100%;
+  outline: none;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--accent);
+}
+
+button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--accent-hover);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--error);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+/* ── Page body padding (overridden on mobile) ──────────────────────── */
+.page-body {
+  padding: 40px 24px;
+}
+
+/* ── Responsive nav ────────────────────────────────────────────────── */
+.nav-full {
+  display: flex;
+  gap: 20px;
+}
+
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.mobile-nav-menu {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.mobile-nav-menu-item {
+  display: block;
+  padding: 14px 24px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.mobile-nav-menu-item:hover {
+  color: var(--text);
+}
+
+/* ── Mobile overrides ──────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  input, textarea {
+    font-size: 16px; /* prevent iOS zoom on focus */
+  }
+
+  .page-body {
+    padding: 20px 16px;
+  }
+
+  .nav-full {
+    display: none;
+  }
+
+  .hamburger-btn {
+    display: flex;
+    align-items: center;
+  }
+
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .modal-sheet {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    max-width: 100% !important;
+    max-height: 88vh !important;
+  }
+}
