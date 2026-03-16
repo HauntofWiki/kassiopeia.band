@@ -21,7 +21,7 @@ export default function ForgotPassword() {
   return (
     <div style={styles.page}>
       <div style={styles.topLeft}>
-        <span style={styles.logo} onClick={() => navigate('/')}>wicky.tv</span>
+        <span style={styles.logo} onClick={() => navigate('/')}>kassiopeia</span>
       </div>
       <div style={styles.box}>
         <h1 style={styles.title}>reset password</h1>

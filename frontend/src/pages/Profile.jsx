@@ -2,7 +2,7 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { followUser, getProfile, listPosts, unfollowUser } from '../api'
+import { getProfile, listPosts } from '../api'
 import { useAuth } from '../App'
 import NavHeader from '../components/NavHeader'
 
@@ -14,7 +14,6 @@ export default function Profile() {
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
   const [error, setError] = useState('')
-  const [followLoading, setFollowLoading] = useState(false)
   const [view, setView] = useState('grid')
 
   useEffect(() => {
@@ -39,22 +38,6 @@ export default function Profile() {
 
   const isOwn = user?.username === profile.username
 
-  async function handleFollow() {
-    setFollowLoading(true)
-    try {
-      if (profile.is_following) {
-        await unfollowUser(profile.username)
-        setProfile(p => ({ ...p, is_following: false, follower_count: p.follower_count - 1 }))
-      } else {
-        await followUser(profile.username)
-        setProfile(p => ({ ...p, is_following: true, follower_count: p.follower_count + 1 }))
-      }
-    } catch (err) {
-      // ignore
-    } finally {
-      setFollowLoading(false)
-    }
-  }
   const bioHtml = profile.bio
     ? DOMPurify.sanitize(marked.parse(profile.bio))
     : null
@@ -87,18 +70,6 @@ export default function Profile() {
                   edit profile
                 </span>
               )}
-              {!isOwn && user && !profile.is_admin && (
-                <span
-                  style={profile.is_following ? styles.unfollowBtn : styles.followBtn}
-                  onClick={followLoading ? undefined : handleFollow}
-                >
-                  {followLoading ? '...' : profile.is_following ? 'unfollow' : 'follow'}
-                </span>
-              )}
-            </div>
-            <div style={styles.followCounts}>
-              <span style={styles.muted}><b style={styles.countNum}>{profile.follower_count}</b> followers</span>
-              <span style={styles.muted}><b style={styles.countNum}>{profile.following_count}</b> following</span>
             </div>
             {profile.created_at && (
               <div style={styles.muted}>

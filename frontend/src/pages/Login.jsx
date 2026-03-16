@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { login, requestAccess } from '../api'
-
+import { login } from '../api'
 import { useAuth } from '../App'
 
 export default function Login() {
@@ -13,12 +12,6 @@ export default function Login() {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  const [requesting, setRequesting] = useState(false)
-  const [reqEmail, setReqEmail] = useState('')
-  const [reqMessage, setReqMessage] = useState('')
-  const [reqSent, setReqSent] = useState(false)
-  const [reqLoading, setReqLoading] = useState(false)
-
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
@@ -26,7 +19,7 @@ export default function Login() {
     try {
       const user = await login(username, password)
       setUser(user)
-      navigate('/home')
+      navigate('/')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -34,26 +27,10 @@ export default function Login() {
     }
   }
 
-  async function handleRequest(e) {
-    e.preventDefault()
-    setReqLoading(true)
-    try {
-      await requestAccess(reqEmail, reqMessage || undefined)
-      setReqSent(true)
-    } catch {
-      setReqSent(true) // show same message regardless
-    } finally {
-      setReqLoading(false)
-    }
-  }
-
   return (
     <div style={styles.page}>
-      <div style={styles.topLeft}>
-        <span style={styles.logo} onClick={() => navigate('/')}>wicky.tv</span>
-      </div>
       <div style={styles.box}>
-        <h1 style={styles.title}>wicky.tv</h1>
+        <h1 style={styles.title}>kassiopeia</h1>
         <form onSubmit={handleSubmit} style={styles.form}>
           <div style={styles.field}>
             <label>username or email</label>
@@ -79,42 +56,11 @@ export default function Login() {
           </button>
         </form>
         <p style={styles.footer}>
-          have an invite? <Link to="/signup">sign up</Link>
+          no account? <Link to="/signup">sign up</Link>
         </p>
         <p style={styles.footer}>
           <Link to="/forgot-password" style={{ color: 'var(--text-muted)' }}>forgot password?</Link>
         </p>
-        <p style={styles.footer}>
-          no invite?{' '}
-          <span style={styles.requestLink} onClick={() => setRequesting(r => !r)}>
-            request access
-          </span>
-        </p>
-        {requesting && (
-          reqSent ? (
-            <p style={{ ...styles.footer, marginTop: '12px' }}>request sent.</p>
-          ) : (
-            <form onSubmit={handleRequest} style={styles.requestForm}>
-              <input
-                type="email"
-                placeholder="your email"
-                value={reqEmail}
-                onChange={e => setReqEmail(e.target.value)}
-                required
-              />
-              <textarea
-                placeholder="anything you want to say (optional)"
-                value={reqMessage}
-                onChange={e => setReqMessage(e.target.value)}
-                rows={2}
-                style={styles.requestTextarea}
-              />
-              <button type="submit" disabled={reqLoading}>
-                {reqLoading ? 'sending…' : 'send request'}
-              </button>
-            </form>
-          )
-        )}
       </div>
     </div>
   )
@@ -126,17 +72,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-  },
-  topLeft: {
-    position: 'absolute',
-    top: '16px',
-    left: '24px',
-  },
-  logo: {
-    color: 'var(--accent)',
-    fontSize: '18px',
-    cursor: 'pointer',
   },
   box: {
     width: '100%',
@@ -150,6 +85,7 @@ const styles = {
     fontSize: '24px',
     marginBottom: '28px',
     color: 'var(--accent)',
+    fontStyle: 'italic',
   },
   form: {
     display: 'flex',
@@ -166,20 +102,5 @@ const styles = {
     color: 'var(--text-muted)',
     textAlign: 'center',
     fontSize: '13px',
-  },
-  requestLink: {
-    color: 'var(--accent)',
-    cursor: 'pointer',
-  },
-  requestForm: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-    marginTop: '16px',
-  },
-  requestTextarea: {
-    resize: 'vertical',
-    fontFamily: 'inherit',
-    fontSize: '14px',
   },
 }

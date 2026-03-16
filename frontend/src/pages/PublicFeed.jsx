@@ -67,7 +67,7 @@ export default function PublicFeed() {
       <NavHeader />
       <div className="page-body" style={styles.body}>
         <div style={styles.hero}>
-          <h1 style={styles.heroTitle}>wicky.tv</h1>
+          <h1 style={styles.heroTitle}>kassiopeia</h1>
           <p style={styles.heroSub}>doom-maxxing 24/7</p>
           <div style={styles.heroActions}>
             <button style={styles.loginBtn} onClick={() => navigate('/login')}>

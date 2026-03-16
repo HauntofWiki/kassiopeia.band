@@ -148,7 +148,7 @@ export default function Settings() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="wicky.tv enjoyer"
+              placeholder="kassiopeia enjoyer"
               maxLength={64}
             />
             <span style={styles.titlePreview}>

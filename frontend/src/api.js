@@ -59,6 +59,8 @@ export const listPostsByTag = (tag) =>
 export const listPosts = (username) =>
   request(`/posts${username ? `?username=${encodeURIComponent(username)}` : ''}`)
 
+export const listReplies = (postId) => request(`/posts/${postId}/replies`)
+
 export const getPost = (id) => request(`/posts/${id}`)
 
 export const createPost = (formData) =>

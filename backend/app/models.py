@@ -39,6 +39,8 @@ class Post(Base):
     music_artist = Column(String(255))
     music_album = Column(String(255))
     tags = Column(String(500))
+    parent_post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
+    quoted_post_id = Column(Integer, ForeignKey("posts.id"), nullable=True)
     show_date = Column(Date, nullable=True)
     show_venue = Column(String(255), nullable=True)
     show_ticket_url = Column(String(500), nullable=True)

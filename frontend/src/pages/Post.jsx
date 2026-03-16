@@ -250,7 +250,7 @@ function ReplyCard({ reply, replyById, user, onQuote, onEdit, onDelete, navigate
         </span>
         {user && <span style={styles.actionLink} onClick={() => onQuote(reply)}>quote</span>}
         {isOwn && <span style={styles.actionLink} onClick={() => onEdit(reply)}>edit</span>}
-        {(isOwn || user?.is_admin) && <span style={styles.actionDanger} onClick={() => onDelete(reply.id)}>delete</span>}
+        {(isOwn || user?.role === 'admin') && <span style={styles.actionDanger} onClick={() => onDelete(reply.id)}>delete</span>}
       </div>
     </div>
   )
@@ -360,15 +360,15 @@ export default function Post() {
         <div style={styles.meta}>
           <div style={styles.titleRow}>
             <h1 style={styles.title}>{post.title}</h1>
-            {(isOwn || user?.is_admin) && (
+            {(isOwn || user?.role === 'admin') && (
               <div style={styles.actions}>
                 {isOwn && <span style={styles.actionLink} onClick={() => navigate(`/post/${id}/edit`)}>edit</span>}
-                {user?.is_admin && !post.parent_post_id && (
+                {user?.role === 'admin' && !post.parent_post_id && (
                   <span style={styles.actionLink} onClick={handlePin}>
                     {post.is_pinned ? 'unpin' : 'pin'}
                   </span>
                 )}
-                {(isOwn || user?.is_admin) && (
+                {(isOwn || user?.role === 'admin') && (
                   confirmDelete ? (
                     <>
                       <span style={styles.actionDanger} onClick={handleDeletePost}>confirm delete</span>
