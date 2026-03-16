@@ -56,8 +56,14 @@ export const getTags = (since) =>
 export const listPostsByTag = (tag) =>
   request(`/posts?tag=${encodeURIComponent(tag)}`)
 
-export const listPosts = (username) =>
-  request(`/posts${username ? `?username=${encodeURIComponent(username)}` : ''}`)
+export const listPosts = (username, tag, type) => {
+  const params = new URLSearchParams()
+  if (username) params.set('username', username)
+  if (tag) params.set('tag', tag)
+  if (type) params.set('type', type)
+  const qs = params.toString()
+  return request(`/posts${qs ? `?${qs}` : ''}`)
+}
 
 export const listReplies = (postId) => request(`/posts/${postId}/replies`)
 

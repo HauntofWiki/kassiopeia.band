@@ -2,19 +2,20 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { getMe } from './api'
 import Admin from './pages/Admin'
+import Blog from './pages/Blog'
 import EditPost from './pages/EditPost'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
-import Home from './pages/Home'
 import Login from './pages/Login'
 import NewPost from './pages/NewPost'
 import Post from './pages/Post'
-import Profile from './pages/Profile'
+import Releases from './pages/Releases'
 import Settings from './pages/Settings'
+import Shows from './pages/Shows'
 import Signup from './pages/Signup'
 import Tags from './pages/Tags'
 import TagsIndex from './pages/TagsIndex'
-import PublicFeed from './pages/PublicFeed'
+import Videos from './pages/Videos'
 
 const AuthContext = createContext(null)
 
@@ -57,11 +58,14 @@ export default function App() {
     <AuthContext.Provider value={{ user, setUser, loading }}>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<Videos />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/shows" element={<Shows />} />
+          <Route path="/releases" element={<Releases />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/home" element={<Home />} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/new" element={<ContributorRoute><NewPost /></ContributorRoute>} />
           <Route path="/post/:id" element={<Post />} />
@@ -69,8 +73,6 @@ export default function App() {
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           <Route path="/tags" element={<TagsIndex />} />
           <Route path="/tags/:tag" element={<Tags />} />
-          <Route path="/:username" element={<Profile />} />
-          <Route path="/" element={<PublicFeed />} />
         </Routes>
       </BrowserRouter>
     </AuthContext.Provider>

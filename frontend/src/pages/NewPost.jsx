@@ -3,23 +3,29 @@ import { marked } from 'marked'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPost } from '../api'
-import { useAuth } from '../App'
 import NavHeader from '../components/NavHeader'
 
+const TYPE_ROUTES = { video: '/', blog: '/blog', show: '/shows', release: '/releases' }
+
 export default function NewPost() {
-  const { user } = useAuth()
   const navigate = useNavigate()
 
+  const [type, setType] = useState('video')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [body, setBody] = useState('')
+  const [tags, setTags] = useState('')
   const [musicSong, setMusicSong] = useState('')
   const [musicArtist, setMusicArtist] = useState('')
   const [musicAlbum, setMusicAlbum] = useState('')
-  const [tags, setTags] = useState('')
+  const [showDate, setShowDate] = useState('')
+  const [showVenue, setShowVenue] = useState('')
+  const [showTicketUrl, setShowTicketUrl] = useState('')
+  const [isPublished, setIsPublished] = useState(false)
   const [mediaFile, setMediaFile] = useState(null)
   const [mediaPreview, setMediaPreview] = useState(null)
   const [mediaType, setMediaType] = useState(null)
-  const [showPreview, setShowPreview] = useState(false)
+  const [showBodyPreview, setShowBodyPreview] = useState(false)
   const [showMusic, setShowMusic] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -34,25 +40,37 @@ export default function NewPost() {
     setMediaType(file.type.startsWith('video/') ? 'video' : 'image')
   }
 
+  function clearFile() {
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview)
+    setMediaFile(null); setMediaPreview(null); setMediaType(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     if (!title.trim()) return setError('title is required')
-    if (!mediaFile) return setError('media is required')
+    if (type === 'video' && !mediaFile) return setError('video file is required')
 
     const form = new FormData()
+    form.append('type', type)
     form.append('title', title.trim())
+    form.append('is_published', isPublished)
     if (description.trim()) form.append('description', description.trim())
+    if (body.trim()) form.append('body', body.trim())
+    if (tags.trim()) form.append('tags', tags.trim())
     if (musicSong.trim()) form.append('music_song', musicSong.trim())
     if (musicArtist.trim()) form.append('music_artist', musicArtist.trim())
     if (musicAlbum.trim()) form.append('music_album', musicAlbum.trim())
-    if (tags.trim()) form.append('tags', tags.trim())
-    form.append('media', mediaFile)
+    if (showDate) form.append('show_date', showDate)
+    if (showVenue.trim()) form.append('show_venue', showVenue.trim())
+    if (showTicketUrl.trim()) form.append('show_ticket_url', showTicketUrl.trim())
+    if (mediaFile) form.append('media', mediaFile)
 
     setSubmitting(true)
     try {
-      const post = await createPost(form)
-      navigate(`/@${user.username}`)
+      await createPost(form)
+      navigate(TYPE_ROUTES[type] || '/')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -60,136 +78,154 @@ export default function NewPost() {
     }
   }
 
+  const needsMedia = type === 'video' || type === 'release'
+
   return (
     <div style={styles.page}>
       <NavHeader />
-
       <div className="page-body" style={styles.body}>
         <h2 style={styles.pageTitle}>new post</h2>
 
         <form onSubmit={handleSubmit} style={styles.form}>
 
-          {/* Media picker */}
-          <div
-            style={{ ...styles.mediaDrop, ...(mediaPreview ? styles.mediaDropFilled : {}) }}
-            onClick={() => fileInputRef.current.click()}
-          >
-            {mediaPreview ? (
-              mediaType === 'video' ? (
-                <video src={mediaPreview} style={styles.mediaPreview} controls />
-              ) : (
-                <img src={mediaPreview} alt="preview" style={styles.mediaPreview} />
-              )
-            ) : (
-              <span style={styles.mediaDropLabel}>click to add photo or video</span>
-            )}
+          {/* Type selector */}
+          <div style={styles.typeRow}>
+            {['video', 'blog', 'show', 'release'].map(t => (
+              <span
+                key={t}
+                style={{ ...styles.typeBtn, ...(type === t ? styles.typeBtnActive : {}) }}
+                onClick={() => setType(t)}
+              >
+                {t}
+              </span>
+            ))}
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,video/mp4,video/quicktime"
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-          />
 
           {/* Title */}
           <div style={styles.field}>
             <label style={styles.label}>title</label>
-            <input
-              style={styles.input}
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              maxLength={255}
-              placeholder="what's this?"
-            />
+            <input style={styles.input} value={title} onChange={e => setTitle(e.target.value)} maxLength={255} placeholder="title" />
           </div>
+
+          {/* Media picker — video required, optional for release */}
+          {(needsMedia || type === 'blog') && (
+            <div style={styles.field}>
+              <label style={styles.label}>{type === 'video' ? 'video / image *' : 'image (optional)'}</label>
+              {mediaPreview ? (
+                <div style={styles.previewWrap}>
+                  {mediaType === 'video'
+                    ? <video src={mediaPreview} style={styles.mediaPreview} controls />
+                    : <img src={mediaPreview} alt="preview" style={styles.mediaPreview} />}
+                  <span style={styles.clearFile} onClick={clearFile}>remove</span>
+                </div>
+              ) : (
+                <div style={styles.mediaDrop} onClick={() => fileInputRef.current.click()}>
+                  <span style={styles.mediaDropLabel}>click to add {type === 'video' ? 'photo or video' : 'image'}</span>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={type === 'video' ? 'image/jpeg,image/png,image/gif,video/mp4,video/quicktime' : 'image/jpeg,image/png,image/gif'}
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+            </div>
+          )}
 
           {/* Description */}
           <div style={styles.field}>
-            <div style={styles.labelRow}>
-              <label style={styles.label}>description</label>
-              <span
-                style={styles.toggle}
-                onClick={() => setShowPreview(p => !p)}
-              >
-                {showPreview ? 'edit' : 'preview'}
-              </span>
-            </div>
-            {showPreview ? (
-              <div
-                style={styles.preview}
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(marked.parse(description || '*nothing yet*')),
-                }}
-              />
-            ) : (
-              <textarea
-                style={styles.textarea}
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="markdown supported"
-                rows={5}
-              />
-            )}
-          </div>
-
-          {/* Relays */}
-          <div style={styles.field}>
-            <label style={styles.label}>relays</label>
-            <input
-              style={styles.input}
-              value={tags}
-              onChange={e => setTags(e.target.value)}
-              placeholder="comma-separated, e.g. life,photos,friends"
+            <label style={styles.label}>description</label>
+            <textarea
+              style={styles.textarea}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="short description"
+              rows={2}
             />
           </div>
 
-          {/* Music toggle */}
-          <div style={styles.field}>
-            <span style={styles.toggle} onClick={() => setShowMusic(m => !m)}>
-              {showMusic ? '— hide music info' : '+ add music info'}
-            </span>
-            {showMusic && (
-              <div style={styles.musicFields}>
-                <input
-                  style={styles.input}
-                  value={musicSong}
-                  onChange={e => setMusicSong(e.target.value)}
-                  placeholder="song"
-                  maxLength={255}
-                />
-                <input
-                  style={styles.input}
-                  value={musicArtist}
-                  onChange={e => setMusicArtist(e.target.value)}
-                  placeholder="artist"
-                  maxLength={255}
-                />
-                <input
-                  style={styles.input}
-                  value={musicAlbum}
-                  onChange={e => setMusicAlbum(e.target.value)}
-                  placeholder="album"
-                  maxLength={255}
-                />
+          {/* Body — blog/release */}
+          {(type === 'blog' || type === 'release') && (
+            <div style={styles.field}>
+              <div style={styles.labelRow}>
+                <label style={styles.label}>body (markdown)</label>
+                <span style={styles.toggle} onClick={() => setShowBodyPreview(p => !p)}>
+                  {showBodyPreview ? 'edit' : 'preview'}
+                </span>
               </div>
-            )}
+              {showBodyPreview ? (
+                <div
+                  style={styles.preview}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(body || '*nothing yet*')) }}
+                />
+              ) : (
+                <textarea
+                  style={{ ...styles.textarea, minHeight: '160px' }}
+                  value={body}
+                  onChange={e => setBody(e.target.value)}
+                  placeholder="markdown supported"
+                  rows={8}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Show fields */}
+          {type === 'show' && (
+            <>
+              <div style={styles.field}>
+                <label style={styles.label}>date</label>
+                <input style={styles.input} type="date" value={showDate} onChange={e => setShowDate(e.target.value)} />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>venue</label>
+                <input style={styles.input} value={showVenue} onChange={e => setShowVenue(e.target.value)} placeholder="venue name, city" />
+              </div>
+              <div style={styles.field}>
+                <label style={styles.label}>ticket url</label>
+                <input style={styles.input} value={showTicketUrl} onChange={e => setShowTicketUrl(e.target.value)} placeholder="https://..." />
+              </div>
+            </>
+          )}
+
+          {/* Tags */}
+          <div style={styles.field}>
+            <label style={styles.label}>tags</label>
+            <input style={styles.input} value={tags} onChange={e => setTags(e.target.value)} placeholder="comma-separated" />
           </div>
+
+          {/* Music fields */}
+          {(type === 'video' || type === 'release') && (
+            <div style={styles.field}>
+              <span style={styles.toggle} onClick={() => setShowMusic(m => !m)}>
+                {showMusic ? '— hide music info' : '+ music info'}
+              </span>
+              {showMusic && (
+                <div style={styles.musicFields}>
+                  <input style={styles.input} value={musicSong} onChange={e => setMusicSong(e.target.value)} placeholder="song" maxLength={255} />
+                  <input style={styles.input} value={musicArtist} onChange={e => setMusicArtist(e.target.value)} placeholder="artist" maxLength={255} />
+                  <input style={styles.input} value={musicAlbum} onChange={e => setMusicAlbum(e.target.value)} placeholder="album" maxLength={255} />
+                </div>
+              )}
+            </div>
+          )}
 
           {error && <p style={styles.error}>{error}</p>}
 
           <div style={styles.actions}>
             <button type="submit" style={styles.btn} disabled={submitting}>
-              {submitting ? 'posting...' : 'post it'}
+              {submitting ? 'posting...' : isPublished ? 'publish' : 'save draft'}
             </button>
-            <button
-              type="button"
-              style={styles.btnCancel}
-              onClick={() => navigate('/home')}
-            >
+            <label style={styles.publishToggle}>
+              <input type="checkbox" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} />
+              publish now
+            </label>
+            <button type="button" style={styles.btnCancel} onClick={() => navigate(TYPE_ROUTES[type] || '/')}>
               cancel
             </button>
           </div>
+
         </form>
       </div>
     </div>
@@ -197,130 +233,47 @@ export default function NewPost() {
 }
 
 const styles = {
-  page: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
+  page: { minHeight: '100vh', display: 'flex', flexDirection: 'column' },
+  body: { maxWidth: '600px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' },
+  pageTitle: { color: 'var(--accent)', fontSize: '20px', fontWeight: 'normal', margin: 0 },
+  form: { display: 'flex', flexDirection: 'column', gap: '20px' },
+  typeRow: { display: 'flex', gap: '8px' },
+  typeBtn: {
+    padding: '5px 16px', borderRadius: '4px', border: '1px solid var(--border)',
+    color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px', userSelect: 'none',
   },
-  body: {
-    maxWidth: '600px',
-    width: '100%',
-    margin: '0 auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px',
-  },
-  pageTitle: {
-    color: 'var(--accent)',
-    fontSize: '20px',
-    fontWeight: 'normal',
-    margin: 0,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-  },
-  mediaDrop: {
-    border: '2px dashed var(--border)',
-    borderRadius: '4px',
-    minHeight: '200px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    overflow: 'hidden',
-    transition: 'border-color 0.2s',
-  },
-  mediaDropFilled: {
-    border: '2px solid var(--border)',
-    cursor: 'pointer',
-  },
-  mediaDropLabel: {
-    color: 'var(--text-muted)',
-    fontSize: '14px',
-  },
-  mediaPreview: {
-    width: '100%',
-    maxHeight: '400px',
-    objectFit: 'contain',
-    display: 'block',
-  },
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  labelRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  label: {
-    color: 'var(--text-muted)',
-    fontSize: '13px',
-    letterSpacing: '0.05em',
-  },
-  toggle: {
-    color: 'var(--accent)',
-    fontSize: '13px',
-    cursor: 'pointer',
-  },
-  input: {
-    width: '100%',
-    boxSizing: 'border-box',
-  },
+  typeBtnActive: { borderColor: 'var(--accent)', color: 'var(--accent)' },
+  field: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  labelRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  label: { color: 'var(--text-muted)', fontSize: '13px', letterSpacing: '0.05em' },
+  toggle: { color: 'var(--accent)', fontSize: '13px', cursor: 'pointer' },
+  input: { width: '100%', boxSizing: 'border-box' },
   textarea: {
-    width: '100%',
-    boxSizing: 'border-box',
-    resize: 'vertical',
-    fontFamily: 'inherit',
-    fontSize: '14px',
-    background: 'var(--surface)',
-    color: 'var(--text)',
-    border: '1px solid var(--border)',
-    borderRadius: '4px',
-    padding: '8px',
+    width: '100%', boxSizing: 'border-box', resize: 'vertical',
+    fontFamily: 'inherit', fontSize: '14px',
+    background: 'var(--surface)', color: 'var(--text)',
+    border: '1px solid var(--border)', borderRadius: '4px', padding: '8px',
   },
-  preview: {
-    minHeight: '80px',
-    padding: '8px',
-    border: '1px solid var(--border)',
-    borderRadius: '4px',
-    fontSize: '14px',
-    lineHeight: '1.6',
+  preview: { minHeight: '80px', padding: '8px', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '14px', lineHeight: '1.6' },
+  mediaDrop: {
+    border: '2px dashed var(--border)', borderRadius: '4px', minHeight: '120px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
   },
-  musicFields: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    marginTop: '8px',
+  mediaDropLabel: { color: 'var(--text-muted)', fontSize: '14px' },
+  previewWrap: { position: 'relative', borderRadius: '4px', overflow: 'hidden', background: 'var(--surface)' },
+  mediaPreview: { width: '100%', maxHeight: '360px', objectFit: 'contain', display: 'block' },
+  clearFile: {
+    position: 'absolute', top: '8px', right: '8px',
+    background: 'rgba(0,0,0,0.6)', color: '#fff', borderRadius: '3px',
+    padding: '3px 8px', fontSize: '12px', cursor: 'pointer',
   },
-  error: {
-    color: 'var(--error)',
-    fontSize: '14px',
-    margin: 0,
-  },
-  actions: {
-    display: 'flex',
-    gap: '12px',
-    alignItems: 'center',
-  },
+  musicFields: { display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' },
+  error: { color: 'var(--error)', fontSize: '14px', margin: 0 },
+  actions: { display: 'flex', gap: '16px', alignItems: 'center' },
   btn: {
-    padding: '10px 28px',
-    background: 'var(--accent)',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '14px',
+    padding: '10px 28px', background: 'var(--accent)', color: '#000',
+    border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '14px',
   },
-  btnCancel: {
-    background: 'none',
-    border: 'none',
-    color: 'var(--text-muted)',
-    cursor: 'pointer',
-    fontSize: '14px',
-    padding: '10px 0',
-  },
+  publishToggle: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-muted)', cursor: 'pointer' },
+  btnCancel: { background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px' },
 }
