@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getTags } from '../api'
-import NavHeader from '../components/NavHeader'
 
 const WINDOWS = [
   { label: '1h', value: 'hour' },
@@ -28,10 +27,7 @@ export default function TagsIndex() {
   const max = filtered[0]?.count || 1
 
   return (
-    <div style={styles.page}>
-      <NavHeader />
-
-      <div className="page-body" style={styles.body}>
+    <div className="page-body" style={styles.body}>
         <div style={styles.labelRow}>
           <p style={styles.pageLabel}>relays</p>
           <div style={styles.toggle}>
@@ -75,7 +71,6 @@ export default function TagsIndex() {
             ))}
           </div>
         )}
-      </div>
     </div>
   )
 }

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { listPosts } from '../api'
-import NavHeader from '../components/NavHeader'
 
 export default function Shows() {
   const [posts, setPosts] = useState([])
@@ -18,9 +17,7 @@ export default function Shows() {
     .sort((a, b) => b.show_date?.localeCompare(a.show_date))
 
   return (
-    <div style={styles.page}>
-      <NavHeader />
-      <div className="page-body" style={styles.body}>
+    <div className="page-body" style={styles.body}>
         <p style={styles.sectionLabel}>shows</p>
 
         {loading ? (
@@ -43,7 +40,6 @@ export default function Shows() {
             )}
           </>
         )}
-      </div>
     </div>
   )
 }
@@ -80,7 +76,7 @@ function ShowRow({ post, upcoming }) {
 
 const styles = {
   page: { minHeight: '100vh', display: 'flex', flexDirection: 'column' },
-  body: { maxWidth: '700px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '32px' },
+  body: { maxWidth: '900px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '32px' },
   sectionLabel: { color: 'var(--accent)', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 },
   subLabel: { color: 'var(--text-muted)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 8px 0' },
   muted: { color: 'var(--text-muted)', fontSize: '13px' },

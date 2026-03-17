@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/posts", tags=["posts"])
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
 MAX_IMAGE_SIZE = 50 * 1024 * 1024
-MAX_VIDEO_SIZE = 500 * 1024 * 1024
+MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif"}
 ALLOWED_VIDEO_TYPES = {"video/mp4", "video/quicktime"}
 
@@ -44,6 +44,7 @@ def _post_dict(post: Post) -> dict:
         "show_venue": post.show_venue,
         "show_ticket_url": post.show_ticket_url,
         "is_published": post.is_published,
+        "sort_order": post.sort_order,
         "is_edited": post.is_edited,
         "is_pinned": post.is_pinned,
         "parent_post_id": post.parent_post_id,
@@ -295,7 +296,7 @@ def list_posts(
     # Non-contributors only see published posts
     if not viewer or viewer.role not in ("admin", "contributor"):
         q = q.filter(Post.is_published == True)
-    posts = q.order_by(Post.created_at.desc()).offset(offset).limit(limit).all()
+    posts = q.order_by(Post.sort_order.asc(), Post.created_at.desc()).offset(offset).limit(limit).all()
     return [_post_dict(p) for p in posts]
 
 
@@ -307,7 +308,7 @@ def list_replies(post_id: int, db: Session = Depends(get_db)):
     replies = (
         db.query(Post)
         .filter(Post.parent_post_id == post_id)
-        .order_by(Post.created_at)
+        .order_by(Post.sort_order.asc(), Post.created_at.asc())
         .all()
     )
     return [_post_dict(r) for r in replies]
@@ -336,6 +337,7 @@ def update_post(
     show_venue: Optional[str] = Form(None),
     show_ticket_url: Optional[str] = Form(None),
     is_published: Optional[bool] = Form(None),
+    sort_order: Optional[int] = Form(None),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -373,6 +375,8 @@ def update_post(
             raise HTTPException(400, "Invalid show_date format (use YYYY-MM-DD)")
     if is_published is not None:
         post.is_published = is_published
+    if sort_order is not None:
+        post.sort_order = sort_order
 
     post.is_edited = True
     post.updated_at = datetime.utcnow()

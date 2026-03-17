@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { deleteUser, listAdminUsers, setUserRole } from '../api'
-import NavHeader from '../components/NavHeader'
 
 export default function Admin() {
   const navigate = useNavigate()
@@ -31,9 +30,7 @@ export default function Admin() {
   }
 
   return (
-    <div style={styles.page}>
-      <NavHeader />
-      <div style={styles.body}>
+    <div className="page-body" style={styles.body}>
         <p style={styles.pageLabel}>admin</p>
 
         {error && <p className="error">{error}</p>}
@@ -86,7 +83,6 @@ export default function Admin() {
               </tbody>
             </table>
           )}
-      </div>
     </div>
   )
 }

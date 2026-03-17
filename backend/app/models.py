@@ -47,6 +47,7 @@ class Post(Base):
     is_published = Column(Boolean, default=False, nullable=False)
     is_pinned = Column(Boolean, default=False, nullable=False)
     is_edited = Column(Boolean, default=False, nullable=False)
+    sort_order = Column(Integer, default=1000, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

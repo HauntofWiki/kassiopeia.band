@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listPosts } from '../api'
-import NavHeader from '../components/NavHeader'
 
 export default function Releases() {
   const navigate = useNavigate()
@@ -14,9 +13,7 @@ export default function Releases() {
   }, [])
 
   return (
-    <div style={styles.page}>
-      <NavHeader />
-      <div className="page-body" style={styles.body}>
+    <div className="page-body" style={styles.body}>
         <p style={styles.sectionLabel}>releases</p>
 
         {loading ? (
@@ -45,7 +42,6 @@ export default function Releases() {
             ))}
           </div>
         )}
-      </div>
     </div>
   )
 }

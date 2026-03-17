@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createPost, deletePost, getPost, listReplies, pinPost, unpinPost, updatePost } from '../api'
 import { useAuth } from '../App'
-import NavHeader from '../components/NavHeader'
+import EditPost from './EditPost'
 
 // ── Compose modal (used for both new replies and editing) ────────────────────
 
@@ -236,7 +236,7 @@ function ReplyCard({ reply, replyById, user, onQuote, onEdit, onDelete, navigate
       )}
 
       <div style={styles.replyMeta}>
-        <span style={styles.replyAuthor} onClick={() => navigate(`/@${reply.user.username}`)}>
+        <span style={styles.replyAuthor} onClick={() => navigate('/')}>
           @{reply.user.username}
         </span>
         {reply.user.title && (
@@ -272,6 +272,7 @@ export default function Post() {
   const [composing, setComposing] = useState(false)
   const [quotedPost, setQuotedPost] = useState(null)
   const [editingPost, setEditingPost] = useState(null)
+  const [editOpen, setEditOpen] = useState(false)
 
   const didScrollRef = useRef(false)
 
@@ -305,7 +306,7 @@ export default function Post() {
   async function handleDeletePost() {
     try {
       await deletePost(id)
-      navigate(`/@${post.user.username}`)
+      navigate('/')
     } catch (err) { setError(err.message) }
   }
 
@@ -331,23 +332,20 @@ export default function Post() {
   }
 
   if (error) return (
-    <div style={styles.page}>
-      <NavHeader />
-      <div style={styles.body}><p style={styles.muted}>{error}</p></div>
-    </div>
+    <div className="page-body" style={styles.body}><p style={styles.muted}>{error}</p></div>
   )
 
   if (!post) return null
 
   const isOwn = user?.username === post.user.username
   const descHtml = post.description ? DOMPurify.sanitize(marked.parse(post.description)) : null
+  const bodyHtml = post.body ? DOMPurify.sanitize(marked.parse(post.body)) : null
   const hasMusic = post.music_song || post.music_artist || post.music_album
   const replyById = Object.fromEntries(replies.map((r) => [r.id, r]))
 
   return (
-    <div style={styles.page}>
-      <NavHeader />
-      <div className="page-body" style={styles.body}>
+    <>
+    <div className="page-body" style={styles.body}>
 
         {/* Post media */}
         <div style={styles.mediaWrap}>
@@ -362,7 +360,7 @@ export default function Post() {
             <h1 style={styles.title}>{post.title}</h1>
             {(isOwn || user?.role === 'admin') && (
               <div style={styles.actions}>
-                {isOwn && <span style={styles.actionLink} onClick={() => navigate(`/post/${id}/edit`)}>edit</span>}
+                {isOwn && <span style={styles.actionLink} onClick={() => setEditOpen(true)}>edit</span>}
                 {user?.role === 'admin' && !post.parent_post_id && (
                   <span style={styles.actionLink} onClick={handlePin}>
                     {post.is_pinned ? 'unpin' : 'pin'}
@@ -383,7 +381,7 @@ export default function Post() {
           </div>
 
           <div style={styles.byline}>
-            <span style={styles.username} onClick={() => navigate(`/@${post.user.username}`)}>
+            <span style={styles.username} onClick={() => navigate('/')}>
               @{post.user.username}
             </span>
             {post.user.title && (
@@ -417,38 +415,56 @@ export default function Post() {
           {descHtml && (
             <div style={styles.description} dangerouslySetInnerHTML={{ __html: descHtml }} />
           )}
+          {bodyHtml && (
+            <div style={styles.body_content} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+          )}
         </div>
 
-        {/* Thread */}
-        <div style={styles.thread}>
-          <div style={styles.threadBar}>
-            <span style={styles.threadLabel}>
-              {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-            </span>
-            {user ? (
-              <button style={styles.replyBtn} onClick={openReply}>+ reply</button>
-            ) : (
-              <span style={styles.muted}>
-                <span style={styles.actionLink} onClick={() => navigate('/login')}>log in</span>
-                {' '}to reply
+        {/* Tracklist (release) or Thread */}
+        {post.type === 'release' ? (
+          replies.length > 0 && (
+            <div style={styles.tracklist}>
+              <p style={styles.tracklistLabel}>tracklist</p>
+              {replies.map((r, i) => (
+                <div key={r.id} style={styles.trackRow} onClick={() => navigate(`/post/${r.id}`)}>
+                  <span style={styles.trackNum}>{i + 1}</span>
+                  <span style={styles.trackTitle}>{r.title}</span>
+                  <span style={styles.trackArrow}>→</span>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          <div style={styles.thread}>
+            <div style={styles.threadBar}>
+              <span style={styles.threadLabel}>
+                {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
               </span>
-            )}
-          </div>
+              {user ? (
+                <button style={styles.replyBtn} onClick={openReply}>+ reply</button>
+              ) : (
+                <span style={styles.muted}>
+                  <span style={styles.actionLink} onClick={() => navigate('/login')}>log in</span>
+                  {' '}to reply
+                </span>
+              )}
+            </div>
 
-          {replies.map((r) => (
-            <ReplyCard
-              key={r.id}
-              reply={r}
-              replyById={replyById}
-              user={user}
-              onQuote={openQuote}
-              onEdit={openEdit}
-              onDelete={handleDeleteReply}
-              navigate={navigate}
-              highlight={highlightId && String(r.id) === highlightId}
-            />
-          ))}
-        </div>
+            {replies.map((r) => (
+              <ReplyCard
+                key={r.id}
+                reply={r}
+                replyById={replyById}
+                user={user}
+                onQuote={openQuote}
+                onEdit={openEdit}
+                onDelete={handleDeleteReply}
+                navigate={navigate}
+                highlight={highlightId && String(r.id) === highlightId}
+              />
+            ))}
+          </div>
+        )}
 
       </div>
 
@@ -462,7 +478,13 @@ export default function Post() {
           onEdited={handleEdited}
         />
       )}
-    </div>
+      {editOpen && (
+        <EditPost
+          onClose={() => setEditOpen(false)}
+          onSaved={(updated) => { setPost(updated); setEditOpen(false) }}
+        />
+      )}
+    </>
   )
 }
 
@@ -500,9 +522,16 @@ const styles = {
   },
   musicIcon: { color: 'var(--accent)' },
   description: { lineHeight: '1.7', marginTop: '4px' },
+  body_content: { lineHeight: '1.7', marginTop: '16px' },
 
   // Thread
   thread: { display: 'flex', flexDirection: 'column', gap: '20px' },
+  tracklist: { display: 'flex', flexDirection: 'column', gap: '0', borderTop: '1px solid var(--border)', paddingTop: '16px' },
+  tracklistLabel: { color: 'var(--accent)', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 12px 0' },
+  trackRow: { display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 0', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
+  trackNum: { color: 'var(--text-muted)', fontSize: '13px', width: '20px', flexShrink: 0, textAlign: 'right' },
+  trackTitle: { flex: 1, fontSize: '14px' },
+  trackArrow: { color: 'var(--accent)', fontSize: '13px', flexShrink: 0 },
   threadBar: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     borderTop: '1px solid var(--border)', paddingTop: '16px',

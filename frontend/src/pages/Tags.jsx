@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { listPostsByTag } from '../api'
-import NavHeader from '../components/NavHeader'
 
 export default function Tags() {
   const { tag } = useParams()
@@ -18,10 +17,7 @@ export default function Tags() {
   }, [tag])
 
   return (
-    <div style={styles.page}>
-      <NavHeader />
-
-      <div className="page-body" style={styles.body}>
+    <div className="page-body" style={styles.body}>
         <p style={styles.tagLabel}>{tag}</p>
 
         {loading ? (
@@ -59,7 +55,7 @@ export default function Tags() {
                   <span style={styles.cardBy}>
                     <span
                       style={styles.cardUsername}
-                      onClick={e => { e.stopPropagation(); navigate(`/@${post.user.username}`) }}
+                      onClick={e => { e.stopPropagation(); navigate('/') }}
                     >
                       @{post.user.username}
                     </span>
@@ -72,7 +68,6 @@ export default function Tags() {
             ))}
           </div>
         )}
-      </div>
     </div>
   )
 }

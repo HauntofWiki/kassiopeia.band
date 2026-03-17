@@ -3,11 +3,10 @@ import { marked } from 'marked'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPost } from '../api'
-import NavHeader from '../components/NavHeader'
 
 const TYPE_ROUTES = { video: '/', blog: '/blog', show: '/shows', release: '/releases' }
 
-export default function NewPost() {
+export default function NewPost({ onClose }) {
   const navigate = useNavigate()
 
   const [type, setType] = useState('video')
@@ -71,6 +70,7 @@ export default function NewPost() {
     try {
       await createPost(form)
       navigate(TYPE_ROUTES[type] || '/')
+      onClose?.()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -80,154 +80,158 @@ export default function NewPost() {
 
   const needsMedia = type === 'video' || type === 'release'
 
-  return (
-    <div style={styles.page}>
-      <NavHeader />
-      <div className="page-body" style={styles.body}>
-        <h2 style={styles.pageTitle}>new post</h2>
-
-        <form onSubmit={handleSubmit} style={styles.form}>
-
-          {/* Type selector */}
-          <div style={styles.typeRow}>
-            {['video', 'blog', 'show', 'release'].map(t => (
-              <span
-                key={t}
-                style={{ ...styles.typeBtn, ...(type === t ? styles.typeBtnActive : {}) }}
-                onClick={() => setType(t)}
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-
-          {/* Title */}
-          <div style={styles.field}>
-            <label style={styles.label}>title</label>
-            <input style={styles.input} value={title} onChange={e => setTitle(e.target.value)} maxLength={255} placeholder="title" />
-          </div>
-
-          {/* Media picker — video required, optional for release */}
-          {(needsMedia || type === 'blog') && (
-            <div style={styles.field}>
-              <label style={styles.label}>{type === 'video' ? 'video / image *' : 'image (optional)'}</label>
-              {mediaPreview ? (
-                <div style={styles.previewWrap}>
-                  {mediaType === 'video'
-                    ? <video src={mediaPreview} style={styles.mediaPreview} controls />
-                    : <img src={mediaPreview} alt="preview" style={styles.mediaPreview} />}
-                  <span style={styles.clearFile} onClick={clearFile}>remove</span>
-                </div>
-              ) : (
-                <div style={styles.mediaDrop} onClick={() => fileInputRef.current.click()}>
-                  <span style={styles.mediaDropLabel}>click to add {type === 'video' ? 'photo or video' : 'image'}</span>
-                </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={type === 'video' ? 'image/jpeg,image/png,image/gif,video/mp4,video/quicktime' : 'image/jpeg,image/png,image/gif'}
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-              />
-            </div>
-          )}
-
-          {/* Description */}
-          <div style={styles.field}>
-            <label style={styles.label}>description</label>
-            <textarea
-              style={styles.textarea}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="short description"
-              rows={2}
-            />
-          </div>
-
-          {/* Body — blog/release */}
-          {(type === 'blog' || type === 'release') && (
-            <div style={styles.field}>
-              <div style={styles.labelRow}>
-                <label style={styles.label}>body (markdown)</label>
-                <span style={styles.toggle} onClick={() => setShowBodyPreview(p => !p)}>
-                  {showBodyPreview ? 'edit' : 'preview'}
-                </span>
-              </div>
-              {showBodyPreview ? (
-                <div
-                  style={styles.preview}
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(body || '*nothing yet*')) }}
-                />
-              ) : (
-                <textarea
-                  style={{ ...styles.textarea, minHeight: '160px' }}
-                  value={body}
-                  onChange={e => setBody(e.target.value)}
-                  placeholder="markdown supported"
-                  rows={8}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Show fields */}
-          {type === 'show' && (
-            <>
-              <div style={styles.field}>
-                <label style={styles.label}>date</label>
-                <input style={styles.input} type="date" value={showDate} onChange={e => setShowDate(e.target.value)} />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>venue</label>
-                <input style={styles.input} value={showVenue} onChange={e => setShowVenue(e.target.value)} placeholder="venue name, city" />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>ticket url</label>
-                <input style={styles.input} value={showTicketUrl} onChange={e => setShowTicketUrl(e.target.value)} placeholder="https://..." />
-              </div>
-            </>
-          )}
-
-          {/* Tags */}
-          <div style={styles.field}>
-            <label style={styles.label}>tags</label>
-            <input style={styles.input} value={tags} onChange={e => setTags(e.target.value)} placeholder="comma-separated" />
-          </div>
-
-          {/* Music fields */}
-          {(type === 'video' || type === 'release') && (
-            <div style={styles.field}>
-              <span style={styles.toggle} onClick={() => setShowMusic(m => !m)}>
-                {showMusic ? '— hide music info' : '+ music info'}
-              </span>
-              {showMusic && (
-                <div style={styles.musicFields}>
-                  <input style={styles.input} value={musicSong} onChange={e => setMusicSong(e.target.value)} placeholder="song" maxLength={255} />
-                  <input style={styles.input} value={musicArtist} onChange={e => setMusicArtist(e.target.value)} placeholder="artist" maxLength={255} />
-                  <input style={styles.input} value={musicAlbum} onChange={e => setMusicAlbum(e.target.value)} placeholder="album" maxLength={255} />
-                </div>
-              )}
-            </div>
-          )}
-
-          {error && <p style={styles.error}>{error}</p>}
-
-          <div style={styles.actions}>
-            <button type="submit" style={styles.btn} disabled={submitting}>
-              {submitting ? 'posting...' : isPublished ? 'publish' : 'save draft'}
-            </button>
-            <label style={styles.publishToggle}>
-              <input type="checkbox" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} />
-              publish now
-            </label>
-            <button type="button" style={styles.btnCancel} onClick={() => navigate(TYPE_ROUTES[type] || '/')}>
-              cancel
-            </button>
-          </div>
-
-        </form>
+  const form = (
+    <form onSubmit={handleSubmit} style={styles.form}>
+      <div style={styles.typeRow}>
+        {['video', 'blog', 'show', 'release'].map(t => (
+          <span
+            key={t}
+            style={{ ...styles.typeBtn, ...(type === t ? styles.typeBtnActive : {}) }}
+            onClick={() => setType(t)}
+          >
+            {t}
+          </span>
+        ))}
       </div>
+
+      <div style={styles.field}>
+        <label style={styles.label}>title</label>
+        <input style={styles.input} value={title} onChange={e => setTitle(e.target.value)} maxLength={255} placeholder="title" />
+      </div>
+
+      {(needsMedia || type === 'blog') && (
+        <div style={styles.field}>
+          <label style={styles.label}>{type === 'video' ? 'video / image *' : 'image (optional)'}</label>
+          {mediaPreview ? (
+            <div style={styles.previewWrap}>
+              {mediaType === 'video'
+                ? <video src={mediaPreview} style={styles.mediaPreview} controls />
+                : <img src={mediaPreview} alt="preview" style={styles.mediaPreview} />}
+              <span style={styles.clearFile} onClick={clearFile}>remove</span>
+            </div>
+          ) : (
+            <div style={styles.mediaDrop} onClick={() => fileInputRef.current.click()}>
+              <span style={styles.mediaDropLabel}>click to add {type === 'video' ? 'photo or video' : 'image'}</span>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={type === 'video' ? 'image/jpeg,image/png,image/gif,video/mp4,video/quicktime' : 'image/jpeg,image/png,image/gif'}
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+        </div>
+      )}
+
+      <div style={styles.field}>
+        <label style={styles.label}>description</label>
+        <textarea
+          style={styles.textarea}
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="short description"
+          rows={2}
+        />
+      </div>
+
+      {(type === 'blog' || type === 'release') && (
+        <div style={styles.field}>
+          <div style={styles.labelRow}>
+            <label style={styles.label}>body (markdown)</label>
+            <span style={styles.toggle} onClick={() => setShowBodyPreview(p => !p)}>
+              {showBodyPreview ? 'edit' : 'preview'}
+            </span>
+          </div>
+          {showBodyPreview ? (
+            <div
+              style={styles.preview}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(body || '*nothing yet*')) }}
+            />
+          ) : (
+            <textarea
+              style={{ ...styles.textarea, minHeight: '160px' }}
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              placeholder="markdown supported"
+              rows={8}
+            />
+          )}
+        </div>
+      )}
+
+      {type === 'show' && (
+        <>
+          <div style={styles.field}>
+            <label style={styles.label}>date</label>
+            <input style={styles.input} type="date" value={showDate} onChange={e => setShowDate(e.target.value)} />
+          </div>
+          <div style={styles.field}>
+            <label style={styles.label}>venue</label>
+            <input style={styles.input} value={showVenue} onChange={e => setShowVenue(e.target.value)} placeholder="venue name, city" />
+          </div>
+          <div style={styles.field}>
+            <label style={styles.label}>ticket url</label>
+            <input style={styles.input} value={showTicketUrl} onChange={e => setShowTicketUrl(e.target.value)} placeholder="https://..." />
+          </div>
+        </>
+      )}
+
+      <div style={styles.field}>
+        <label style={styles.label}>tags</label>
+        <input style={styles.input} value={tags} onChange={e => setTags(e.target.value)} placeholder="comma-separated" />
+      </div>
+
+      {(type === 'video' || type === 'release') && (
+        <div style={styles.field}>
+          <span style={styles.toggle} onClick={() => setShowMusic(m => !m)}>
+            {showMusic ? '— hide music info' : '+ music info'}
+          </span>
+          {showMusic && (
+            <div style={styles.musicFields}>
+              <input style={styles.input} value={musicSong} onChange={e => setMusicSong(e.target.value)} placeholder="song" maxLength={255} />
+              <input style={styles.input} value={musicArtist} onChange={e => setMusicArtist(e.target.value)} placeholder="artist" maxLength={255} />
+              <input style={styles.input} value={musicAlbum} onChange={e => setMusicAlbum(e.target.value)} placeholder="album" maxLength={255} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {error && <p style={styles.error}>{error}</p>}
+
+      <div style={styles.actions}>
+        <button type="submit" style={styles.btn} disabled={submitting}>
+          {submitting ? 'posting...' : isPublished ? 'publish' : 'save draft'}
+        </button>
+        <label style={styles.publishToggle}>
+          <input type="checkbox" checked={isPublished} onChange={e => setIsPublished(e.target.checked)} />
+          publish now
+        </label>
+        <button type="button" style={styles.btnCancel} onClick={() => { onClose?.(); navigate(TYPE_ROUTES[type] || '/') }}>
+          cancel
+        </button>
+      </div>
+    </form>
+  )
+
+  if (onClose) {
+    return (
+      <div style={styles.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+        <div style={styles.modal}>
+          <div style={styles.modalHeader}>
+            <span style={styles.modalTitle}>new post</span>
+            <span style={styles.closeBtn} onClick={onClose}>✕</span>
+          </div>
+          {form}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="page-body" style={styles.body}>
+      <h2 style={styles.pageTitle}>new post</h2>
+      {form}
     </div>
   )
 }
@@ -276,4 +280,20 @@ const styles = {
   },
   publishToggle: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-muted)', cursor: 'pointer' },
   btnCancel: { background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px' },
+  overlay: {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 200, padding: '24px',
+  },
+  modal: {
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: '6px', width: '100%', maxWidth: '600px', maxHeight: '90vh',
+    display: 'flex', flexDirection: 'column', gap: '20px', padding: '24px',
+    overflowY: 'auto',
+  },
+  modalHeader: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+  },
+  modalTitle: { color: 'var(--accent)', fontSize: '18px' },
+  closeBtn: { color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px', lineHeight: 1 },
 }

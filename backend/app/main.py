@@ -70,6 +70,9 @@ def _migrate():
             "ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE"
         ))
         db.execute(text(
+            "ALTER TABLE posts ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 1000"
+        ))
+        db.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user'"
         ))
         db.execute(text(

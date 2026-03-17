@@ -1,0 +1,74 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+    container_name: kassiopeia-frontend
+    restart: unless-stopped
+    ports:
+      - "8092:80"
+    networks:
+      - default
+      - shared
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    build:
+      context: ./backend
+    container_name: kassiopeia-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://kassiopeia:${POSTGRES_PASSWORD}@db:5432/kassiopeia
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      UPLOAD_DIR: /app/uploads
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@kassiopeia.band}
+      SITE_URL: ${SITE_URL:-https://kassiopeia.band}
+      SECURE_COOKIES: ${SECURE_COOKIES:-true}
+    ports:
+      - "8093:8000"
+    networks:
+      - default
+      - shared
+    volumes:
+      - /mnt/media/kassiopeia/uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  db:
+    image: postgres:16-alpine
+    container_name: kassiopeia-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kassiopeia
+      POSTGRES_USER: kassiopeia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /mnt/media/kassiopeia/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kassiopeia"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  shared:
+    external: true

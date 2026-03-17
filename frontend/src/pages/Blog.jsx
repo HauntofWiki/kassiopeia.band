@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listPosts } from '../api'
-import NavHeader from '../components/NavHeader'
 
 export default function Blog() {
   const navigate = useNavigate()
@@ -14,9 +13,7 @@ export default function Blog() {
   }, [])
 
   return (
-    <div style={styles.page}>
-      <NavHeader />
-      <div className="page-body" style={styles.body}>
+    <div className="page-body" style={styles.body}>
         <p style={styles.sectionLabel}>blog</p>
 
         {loading ? (
@@ -48,14 +45,13 @@ export default function Blog() {
             ))}
           </div>
         )}
-      </div>
     </div>
   )
 }
 
 const styles = {
   page: { minHeight: '100vh', display: 'flex', flexDirection: 'column' },
-  body: { maxWidth: '700px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' },
+  body: { maxWidth: '900px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' },
   sectionLabel: { color: 'var(--accent)', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 },
   muted: { color: 'var(--text-muted)', fontSize: '13px' },
   feed: { display: 'flex', flexDirection: 'column' },
