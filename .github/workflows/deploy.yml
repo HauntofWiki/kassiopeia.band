@@ -1,0 +1,22 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to wickyvps
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 5.78.181.176
+          username: richard
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/kassiopeia.band
+            git pull origin main
+            cd /opt/cloud/wickycloud/kassiopeia
+            docker compose build --no-cache frontend backend
+            docker compose up -d --force-recreate frontend backend
