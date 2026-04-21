@@ -3,9 +3,11 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { getMe } from './api'
 import NavHeader from './components/NavHeader'
 import Player from './components/Player'
+import SocialBar from './components/SocialBar'
 import TabNav from './components/TabNav'
 import { PlayerProvider, usePlayer } from './context/PlayerContext'
 import About from './pages/About'
+import Feed from './pages/Feed'
 import Admin from './pages/Admin'
 import Blog from './pages/Blog'
 import EditPost from './pages/EditPost'
@@ -46,12 +48,14 @@ function AppContent() {
   const hasMiniBar = currentPost && !nowPlayingView
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ minHeight: '100vh' }}>
       <NavHeader />
+      <SocialBar />
       <div style={{ ...styles.column, paddingBottom: hasMiniBar ? '56px' : 0 }}>
         <TabNav />
         <div style={{ flex: 1 }}>
           <Routes>
+            <Route path="/feed" element={<Feed />} />
             <Route path="/" element={<Videos />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/shows" element={<Shows />} />
@@ -65,6 +69,7 @@ function AppContent() {
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
             <Route path="/tags" element={<TagsIndex />} />
             <Route path="/tags/:tag" element={<Tags />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </div>
@@ -113,5 +118,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     minHeight: 'calc(100vh - 41px)',
+    background: 'var(--bg)',
   },
 }
