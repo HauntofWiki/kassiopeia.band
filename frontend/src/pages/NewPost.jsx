@@ -2,12 +2,14 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createPost } from '../api'
+import { useAuth } from '../App'
+import { createPost, listPostsWithMedia } from '../api'
 
 const TYPE_ROUTES = { video: '/', blog: '/blog', show: '/shows', release: '/releases' }
 
 export default function NewPost({ onClose }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [type, setType] = useState('video')
   const [title, setTitle] = useState('')
@@ -27,7 +29,12 @@ export default function NewPost({ onClose }) {
   const [showBodyPreview, setShowBodyPreview] = useState(false)
   const [showMusic, setShowMusic] = useState(false)
   const [error, setError] = useState('')
+  const [sortOrder, setSortOrder] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [linkMode, setLinkMode] = useState(false)
+  const [linkSearch, setLinkSearch] = useState('')
+  const [linkPosts, setLinkPosts] = useState([])
+  const [linkedPost, setLinkedPost] = useState(null)
 
   const fileInputRef = useRef()
 
@@ -49,7 +56,7 @@ export default function NewPost({ onClose }) {
     e.preventDefault()
     setError('')
     if (!title.trim()) return setError('title is required')
-    if (type === 'video' && !mediaFile) return setError('video file is required')
+    if (type === 'video' && !mediaFile && !linkedPost) return setError('video file is required')
 
     const form = new FormData()
     form.append('type', type)
@@ -65,6 +72,8 @@ export default function NewPost({ onClose }) {
     if (showVenue.trim()) form.append('show_venue', showVenue.trim())
     if (showTicketUrl.trim()) form.append('show_ticket_url', showTicketUrl.trim())
     if (mediaFile) form.append('media', mediaFile)
+    if (!mediaFile && linkedPost) form.append('link_media_post_id', linkedPost.id)
+    if (sortOrder !== '') form.append('sort_order', parseInt(sortOrder, 10))
 
     setSubmitting(true)
     try {
@@ -83,7 +92,7 @@ export default function NewPost({ onClose }) {
   const form = (
     <form onSubmit={handleSubmit} style={styles.form}>
       <div style={styles.typeRow}>
-        {['video', 'blog', 'show', 'release'].map(t => (
+        {['video', 'blog', 'show', 'release', 'news'].map(t => (
           <span
             key={t}
             style={{ ...styles.typeBtn, ...(type === t ? styles.typeBtnActive : {}) }}
@@ -101,26 +110,80 @@ export default function NewPost({ onClose }) {
 
       {(needsMedia || type === 'blog') && (
         <div style={styles.field}>
-          <label style={styles.label}>{type === 'video' ? 'video / image *' : 'image (optional)'}</label>
-          {mediaPreview ? (
-            <div style={styles.previewWrap}>
-              {mediaType === 'video'
-                ? <video src={mediaPreview} style={styles.mediaPreview} controls />
-                : <img src={mediaPreview} alt="preview" style={styles.mediaPreview} />}
-              <span style={styles.clearFile} onClick={clearFile}>remove</span>
+          <div style={styles.labelRow}>
+            <label style={styles.label}>{type === 'video' ? 'video / image *' : 'image (optional)'}</label>
+            <span style={styles.toggle} onClick={() => {
+              setLinkMode(m => !m)
+              setLinkedPost(null); setLinkSearch(''); setLinkPosts([])
+              clearFile()
+            }}>
+              {linkMode ? 'upload instead' : 'link existing'}
+            </span>
+          </div>
+
+          {linkMode ? (
+            <div style={styles.field}>
+              <input
+                style={styles.input}
+                placeholder="search by title…"
+                value={linkSearch}
+                onChange={e => {
+                  setLinkSearch(e.target.value)
+                  if (e.target.value.length > 0) {
+                    listPostsWithMedia().then(posts => setLinkPosts(
+                      posts.filter(p => p.title?.toLowerCase().includes(e.target.value.toLowerCase()))
+                    ))
+                  } else {
+                    setLinkPosts([])
+                  }
+                }}
+              />
+              {linkedPost ? (
+                <div style={styles.linkedPreview}>
+                  {linkedPost.media_type === 'video'
+                    ? <video src={linkedPost.media_url} style={styles.mediaPreview} controls />
+                    : <img src={linkedPost.media_url} alt="" style={styles.mediaPreview} />}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{linkedPost.title}</span>
+                    <span style={styles.toggle} onClick={() => { setLinkedPost(null); setLinkSearch('') }}>clear</span>
+                  </div>
+                </div>
+              ) : linkPosts.length > 0 && (
+                <div style={styles.linkList}>
+                  {linkPosts.slice(0, 8).map(p => (
+                    <div key={p.id} style={styles.linkItem} onClick={() => { setLinkedPost(p); setLinkPosts([]) }}>
+                      {p.thumbnail_path
+                        ? <img src={p.thumbnail_url} style={styles.linkThumb} alt="" />
+                        : <div style={styles.linkThumbPlaceholder}>{p.media_type}</div>}
+                      <span style={{ fontSize: '13px' }}>{p.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
-            <div style={styles.mediaDrop} onClick={() => fileInputRef.current.click()}>
-              <span style={styles.mediaDropLabel}>click to add {type === 'video' ? 'photo or video' : 'image'}</span>
-            </div>
+            <>
+              {mediaPreview ? (
+                <div style={styles.previewWrap}>
+                  {mediaType === 'video'
+                    ? <video src={mediaPreview} style={styles.mediaPreview} controls />
+                    : <img src={mediaPreview} alt="preview" style={styles.mediaPreview} />}
+                  <span style={styles.clearFile} onClick={clearFile}>remove</span>
+                </div>
+              ) : (
+                <div style={styles.mediaDrop} onClick={() => fileInputRef.current.click()}>
+                  <span style={styles.mediaDropLabel}>click to add {type === 'video' ? 'photo or video' : 'image'}</span>
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={type === 'video' ? 'image/jpeg,image/png,image/gif,video/mp4,video/quicktime' : 'image/jpeg,image/png,image/gif'}
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+            </>
           )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={type === 'video' ? 'image/jpeg,image/png,image/gif,video/mp4,video/quicktime' : 'image/jpeg,image/png,image/gif'}
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-          />
         </div>
       )}
 
@@ -135,7 +198,7 @@ export default function NewPost({ onClose }) {
         />
       </div>
 
-      {(type === 'blog' || type === 'release') && (
+      {(type === 'blog' || type === 'release' || type === 'news' || type === 'show') && (
         <div style={styles.field}>
           <div style={styles.labelRow}>
             <label style={styles.label}>body (markdown)</label>
@@ -145,6 +208,7 @@ export default function NewPost({ onClose }) {
           </div>
           {showBodyPreview ? (
             <div
+              className="md-preview"
               style={styles.preview}
               dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(body || '*nothing yet*')) }}
             />
@@ -153,6 +217,15 @@ export default function NewPost({ onClose }) {
               style={{ ...styles.textarea, minHeight: '160px' }}
               value={body}
               onChange={e => setBody(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Tab') {
+                  e.preventDefault()
+                  const { selectionStart: s, selectionEnd: end } = e.target
+                  const next = body.substring(0, s) + '  ' + body.substring(end)
+                  setBody(next)
+                  requestAnimationFrame(() => { e.target.selectionStart = e.target.selectionEnd = s + 2 })
+                }
+              }}
               placeholder="markdown supported"
               rows={8}
             />
@@ -197,6 +270,13 @@ export default function NewPost({ onClose }) {
         </div>
       )}
 
+      {user?.role === 'admin' && (
+        <div style={styles.field}>
+          <label style={styles.label}>sort order (admin)</label>
+          <input style={styles.input} type="number" value={sortOrder} onChange={e => setSortOrder(e.target.value)} placeholder="1000" />
+        </div>
+      )}
+
       {error && <p style={styles.error}>{error}</p>}
 
       <div style={styles.actions}>
@@ -216,7 +296,7 @@ export default function NewPost({ onClose }) {
 
   if (onClose) {
     return (
-      <div style={styles.overlay} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div style={styles.overlay} onMouseDown={e => { if (e.target === e.currentTarget) e.currentTarget._closeOnMouseUp = true }} onMouseUp={e => { if (e.currentTarget._closeOnMouseUp) { e.currentTarget._closeOnMouseUp = false; onClose() } }}>
         <div style={styles.modal}>
           <div style={styles.modalHeader}>
             <span style={styles.modalTitle}>new post</span>
@@ -272,6 +352,11 @@ const styles = {
     padding: '3px 8px', fontSize: '12px', cursor: 'pointer',
   },
   musicFields: { display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' },
+  linkedPreview: { display: 'flex', flexDirection: 'column', gap: '8px' },
+  linkList: { display: 'flex', flexDirection: 'column', gap: '4px', border: '1px solid var(--border)', borderRadius: '4px', overflow: 'hidden' },
+  linkItem: { display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', cursor: 'pointer', background: 'var(--surface)' },
+  linkThumb: { width: '48px', height: '36px', objectFit: 'cover', borderRadius: '2px', flexShrink: 0 },
+  linkThumbPlaceholder: { width: '48px', height: '36px', background: 'var(--border)', borderRadius: '2px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: 'var(--text-muted)' },
   error: { color: 'var(--error)', fontSize: '14px', margin: 0 },
   actions: { display: 'flex', gap: '16px', alignItems: 'center' },
   btn: {

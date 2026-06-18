@@ -10,8 +10,8 @@
   --border: #2a2a2a;
   --text: #e0e0e0;
   --text-muted: #666;
-  --accent: #ff2d78;
-  --accent-hover: #ff5c96;
+  --accent: #00e8c8;
+  --accent-hover: #33efd4;
   --title: #00e8c8;
   --error: #ff4444;
 }
@@ -22,6 +22,16 @@ body {
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;
   line-height: 1.6;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: url('/indexbkg.png') center / cover no-repeat;
+  filter: invert(1) brightness(0.5);
+  z-index: -1;
 }
 
 a {
@@ -76,6 +86,15 @@ button:disabled {
   margin-top: 6px;
 }
 
+/* ── Markdown rendered content ─────────────────────────────────────── */
+.md-preview ul, .md-preview ol {
+  padding-left: 1.5em;
+  list-style-position: inside;
+}
+.md-preview li {
+  margin: 2px 0;
+}
+
 /* ── Page body padding (overridden on mobile) ──────────────────────── */
 .page-body {
   padding: 40px 24px;
@@ -84,7 +103,8 @@ button:disabled {
 /* ── Responsive nav ────────────────────────────────────────────────── */
 .nav-full {
   display: flex;
-  gap: 20px;
+  align-items: center;
+  gap: 16px;
 }
 
 .hamburger-btn {
@@ -92,9 +112,9 @@ button:disabled {
   background: none;
   border: none;
   color: var(--text);
-  font-size: 24px;
+  font-size: 48px;
   cursor: pointer;
-  padding: 0;
+  padding: 0 0 0 8px;
   line-height: 1;
   font-family: inherit;
 }
@@ -107,7 +127,7 @@ button:disabled {
 .mobile-nav-menu-item {
   display: block;
   padding: 14px 24px;
-  color: var(--text-muted);
+  color: var(--text);
   cursor: pointer;
   border-top: 1px solid var(--border);
   font-size: 14px;
@@ -115,11 +135,15 @@ button:disabled {
 }
 
 .mobile-nav-menu-item:hover {
-  color: var(--text);
+  color: var(--accent);
 }
 
 /* ── Mobile overrides ──────────────────────────────────────────────── */
 @media (max-width: 600px) {
+  :root {
+    --text-muted: #aaa;
+  }
+
   input, textarea {
     font-size: 16px; /* prevent iOS zoom on focus */
   }

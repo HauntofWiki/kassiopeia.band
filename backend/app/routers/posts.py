@@ -15,15 +15,18 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user, get_optional_current_user, require_contributor
 from ..database import get_db
-from ..models import Post, User
+from ..models import Notification, Post, User
+from .. import storage
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
 MAX_IMAGE_SIZE = 50 * 1024 * 1024
 MAX_VIDEO_SIZE = 2 * 1024 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif"}
 ALLOWED_VIDEO_TYPES = {"video/mp4", "video/quicktime"}
+
+_IMG_FMT = {"jpg": "JPEG", "jpeg": "JPEG", "png": "PNG", "gif": "GIF"}
+_IMG_MIME = {"JPEG": "image/jpeg", "PNG": "image/png", "GIF": "image/gif"}
 
 
 def _post_dict(post: Post) -> dict:
@@ -34,8 +37,10 @@ def _post_dict(post: Post) -> dict:
         "description": post.description,
         "body": post.body,
         "media_path": post.media_path,
+        "media_url": storage.media_url(post.media_path),
         "media_type": post.media_type,
         "thumbnail_path": post.thumbnail_path,
+        "thumbnail_url": storage.media_url(post.thumbnail_path),
         "music_song": post.music_song,
         "music_artist": post.music_artist,
         "music_album": post.music_album,
@@ -55,7 +60,7 @@ def _post_dict(post: Post) -> dict:
             "username": post.user.username,
             "display_name": post.user.display_name,
             "title": post.user.title,
-            "profile_picture": post.user.profile_picture,
+            "profile_picture": storage.media_url(post.user.profile_picture),
             "role": post.user.role,
         },
     }
@@ -65,11 +70,19 @@ def _normalize_tags(tags: str) -> str:
     return ','.join(t.strip() for t in tags.split(',') if t.strip())
 
 
-def _make_thumbnail(image_bytes: bytes, save_path: str):
+def _make_thumbnail_bytes(image_bytes: bytes) -> bytes:
     img = Image.open(io.BytesIO(image_bytes))
     img = ImageOps.exif_transpose(img)
     img.thumbnail((800, 800), Image.LANCZOS)
-    img.save(save_path, format="JPEG")
+    if img.mode in ("RGBA", "P", "LA"):
+        bg = Image.new("RGB", img.size, (0, 0, 0))
+        bg.paste(img, mask=img.split()[-1] if img.mode in ("RGBA", "LA") else None)
+        img = bg
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+    out = io.BytesIO()
+    img.save(out, format="JPEG")
+    return out.getvalue()
 
 
 def _make_video_thumbnail(video_path: str, save_path: str) -> bool:
@@ -98,9 +111,11 @@ async def create_post(
     show_venue: Optional[str] = Form(None),
     show_ticket_url: Optional[str] = Form(None),
     is_published: bool = Form(False),
+    sort_order: Optional[int] = Form(None),
     parent_post_id: Optional[int] = Form(None),
     quoted_post_id: Optional[int] = Form(None),
     media: Optional[UploadFile] = File(None),
+    link_media_post_id: Optional[int] = Form(None),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -149,35 +164,44 @@ async def create_post(
         uid = uuid.uuid4().hex[:8]
         subdir = "replies" if is_reply else "posts"
         filename = f"{current_user.username}_{timestamp}_{uid}.{ext}"
+        key = f"{subdir}/{filename}"
 
-        save_dir = os.path.join(UPLOAD_DIR, subdir)
-        thumbs_dir = os.path.join(UPLOAD_DIR, "thumbnails")
-        os.makedirs(save_dir, exist_ok=True)
-        os.makedirs(thumbs_dir, exist_ok=True)
-
-        full_path = os.path.join(save_dir, filename)
         if media_type == "image":
             img = Image.open(io.BytesIO(contents))
             img = ImageOps.exif_transpose(img)
             img.thumbnail((2000, 2000), Image.LANCZOS)
-            img.save(full_path)
+            buf = io.BytesIO()
+            fmt = _IMG_FMT.get(ext, "JPEG")
+            img.save(buf, format=fmt)
+            storage.upload_file(buf.getvalue(), key, _IMG_MIME.get(fmt, actual_mime))
+            thumb_key = f"thumbnails/thumb_{filename.rsplit('.', 1)[0]}.jpg"
+            storage.upload_file(_make_thumbnail_bytes(contents), thumb_key, "image/jpeg")
+            thumbnail_path = thumb_key
         else:
-            with open(full_path, "wb") as f:
-                f.write(contents)
-        media_path = f"{subdir}/{filename}"
+            import tempfile
+            tmp_v = tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False)
+            tmp_t = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+            try:
+                tmp_v.write(contents); tmp_v.flush(); tmp_v.close(); tmp_t.close()
+                storage.upload_file(contents, key, actual_mime)
+                if _make_video_thumbnail(tmp_v.name, tmp_t.name):
+                    with open(tmp_t.name, "rb") as f:
+                        thumb_bytes = f.read()
+                    thumb_key = f"thumbnails/thumb_{filename.rsplit('.', 1)[0]}.jpg"
+                    storage.upload_file(thumb_bytes, thumb_key, "image/jpeg")
+                    thumbnail_path = thumb_key
+            finally:
+                for p in [tmp_v.name, tmp_t.name]:
+                    if os.path.exists(p):
+                        os.unlink(p)
+        media_path = key
 
-        if media_type == "image":
-            thumb_filename = f"thumb_{filename}"
-            _make_thumbnail(contents, os.path.join(thumbs_dir, thumb_filename))
-            thumbnail_path = f"thumbnails/{thumb_filename}"
-        elif media_type == "video":
-            thumb_filename = f"thumb_{filename.rsplit('.', 1)[0]}.jpg"
-            ok = _make_video_thumbnail(
-                os.path.join(save_dir, filename),
-                os.path.join(thumbs_dir, thumb_filename),
-            )
-            if ok:
-                thumbnail_path = f"thumbnails/{thumb_filename}"
+    if not media_path and link_media_post_id:
+        source = db.get(Post, link_media_post_id)
+        if source and source.media_path:
+            media_path = source.media_path
+            media_type = source.media_type
+            thumbnail_path = source.thumbnail_path
 
     from datetime import date as date_type
     parsed_show_date = None
@@ -204,12 +228,29 @@ async def create_post(
         show_venue=show_venue.strip() if show_venue else None,
         show_ticket_url=show_ticket_url.strip() if show_ticket_url else None,
         is_published=is_published,
+        sort_order=sort_order if sort_order is not None else 1000,
         parent_post_id=parent_post_id,
         quoted_post_id=quoted_post_id,
     )
     db.add(post)
     db.commit()
     db.refresh(post)
+
+    # Notifications
+    if is_reply:
+        # Notify all admins/contributors except the poster
+        targets = db.query(User).filter(
+            User.role.in_(["admin", "contributor"]),
+            User.id != current_user.id,
+        ).all()
+        for u in targets:
+            db.add(Notification(user_id=u.id, type="reply", post_id=post.id, from_user_id=current_user.id))
+    if quoted_post_id:
+        quoted = db.get(Post, quoted_post_id)
+        if quoted and quoted.user_id != current_user.id:
+            db.add(Notification(user_id=quoted.user_id, type="quote", post_id=post.id, from_user_id=current_user.id))
+    db.commit()
+
     return _post_dict(post)
 
 
@@ -217,7 +258,7 @@ async def create_post(
 def public_feed(limit: int = 50, offset: int = 0, db: Session = Depends(get_db)):
     pinned = db.query(Post).filter(Post.is_pinned == True, Post.parent_post_id == None).first()
     q = db.query(Post).filter(Post.parent_post_id == None, Post.is_published == True)
-    posts = q.order_by(Post.created_at.desc()).offset(offset).limit(limit).all()
+    posts = q.order_by(Post.sort_order.asc(), Post.created_at.desc()).offset(offset).limit(limit).all()
     result = []
     if pinned and offset == 0:
         result.append(_post_dict(pinned))
@@ -267,7 +308,7 @@ def get_feed(
 ):
     # All published root posts — no follow graph needed
     q = db.query(Post).filter(Post.parent_post_id == None, Post.is_published == True)
-    posts = q.order_by(Post.created_at.desc()).offset(offset).limit(limit).all()
+    posts = q.order_by(Post.sort_order.asc(), Post.created_at.desc()).offset(offset).limit(limit).all()
     return [_post_dict(p) for p in posts]
 
 
@@ -278,6 +319,7 @@ def list_posts(
     type: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
+    has_media: bool = False,
     db: Session = Depends(get_db),
     viewer=Depends(get_optional_current_user),
 ):
@@ -285,6 +327,8 @@ def list_posts(
     q = db.query(Post).join(User)
     if not tag:
         q = q.filter(Post.parent_post_id == None)
+    if has_media:
+        q = q.filter(Post.media_path != None)
     if username:
         q = q.filter(User.username == username)
     if tag:
@@ -323,7 +367,7 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{post_id}")
-def update_post(
+async def update_post(
     post_id: int,
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
@@ -338,6 +382,8 @@ def update_post(
     show_ticket_url: Optional[str] = Form(None),
     is_published: Optional[bool] = Form(None),
     sort_order: Optional[int] = Form(None),
+    media: Optional[UploadFile] = File(None),
+    link_media_post_id: Optional[int] = Form(None),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -378,6 +424,61 @@ def update_post(
     if sort_order is not None:
         post.sort_order = sort_order
 
+    if link_media_post_id and not (media and media.filename):
+        source = db.get(Post, link_media_post_id)
+        if source and source.media_path:
+            post.media_path = source.media_path
+            post.media_type = source.media_type
+            post.thumbnail_path = source.thumbnail_path
+
+    if media and media.filename:
+        contents = await media.read()
+        mime = magic.from_buffer(contents[:2048], mime=True)
+        if mime in ALLOWED_IMAGE_TYPES:
+            new_media_type = "image"
+        elif mime in ALLOWED_VIDEO_TYPES:
+            new_media_type = "video"
+        else:
+            raise HTTPException(400, "Unsupported file type")
+        # Remove old files from B2
+        for old_key in [post.media_path, post.thumbnail_path]:
+            storage.delete_file(old_key)
+        ext = media.filename.rsplit(".", 1)[-1].lower() if "." in (media.filename or "") else "bin"
+        uid = uuid.uuid4().hex
+        subdir = "images" if new_media_type == "image" else "videos"
+        filename = f"{uid}.{ext}"
+        key = f"{subdir}/{filename}"
+        if new_media_type == "image":
+            img = Image.open(io.BytesIO(contents))
+            img = ImageOps.exif_transpose(img)
+            img.thumbnail((2000, 2000), Image.LANCZOS)
+            buf = io.BytesIO()
+            fmt = _IMG_FMT.get(ext, "JPEG")
+            img.save(buf, format=fmt)
+            storage.upload_file(buf.getvalue(), key, _IMG_MIME.get(fmt, mime))
+            thumb_key = f"thumbnails/thumb_{uid}.jpg"
+            storage.upload_file(_make_thumbnail_bytes(contents), thumb_key, "image/jpeg")
+            post.thumbnail_path = thumb_key
+        else:
+            import tempfile
+            tmp_v = tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False)
+            tmp_t = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)
+            try:
+                tmp_v.write(contents); tmp_v.flush(); tmp_v.close(); tmp_t.close()
+                storage.upload_file(contents, key, mime)
+                if _make_video_thumbnail(tmp_v.name, tmp_t.name):
+                    with open(tmp_t.name, "rb") as f:
+                        thumb_bytes = f.read()
+                    thumb_key = f"thumbnails/thumb_{uid}.jpg"
+                    storage.upload_file(thumb_bytes, thumb_key, "image/jpeg")
+                    post.thumbnail_path = thumb_key
+            finally:
+                for p in [tmp_v.name, tmp_t.name]:
+                    if os.path.exists(p):
+                        os.unlink(p)
+        post.media_path = key
+        post.media_type = new_media_type
+
     post.is_edited = True
     post.updated_at = datetime.utcnow()
     db.commit()
@@ -397,12 +498,12 @@ def delete_post(
     if post.user_id != current_user.id and current_user.role != "admin":
         raise HTTPException(403, "Not your post")
 
-    for rel_path in [post.media_path, post.thumbnail_path]:
-        if rel_path:
-            full = os.path.join(UPLOAD_DIR, rel_path)
-            if os.path.exists(full):
-                os.remove(full)
+    for key in [post.media_path, post.thumbnail_path]:
+        storage.delete_file(key)
 
+    db.query(Post).filter(Post.quoted_post_id == post_id).update({"quoted_post_id": None}, synchronize_session=False)
+    db.query(Post).filter(Post.parent_post_id == post_id).update({"parent_post_id": None}, synchronize_session=False)
+    db.flush()
     db.delete(post)
     db.commit()
     return {"ok": True}

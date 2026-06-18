@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { usePlayer } from '../context/PlayerContext'
 
@@ -10,10 +10,11 @@ export default function Player() {
   } = usePlayer()
   const location = useLocation()
   const navigate = useNavigate()
+  const [descExpanded, setDescExpanded] = useState(false)
 
   const isVideo = currentPost?.media_type === 'video'
-  const mediaSrc = isVideo && currentPost?.media_path ? `/uploads/${currentPost.media_path}` : null
-  const thumbnail = currentPost?.thumbnail_path ? `/uploads/${currentPost.thumbnail_path}` : null
+  const mediaSrc = isVideo && currentPost?.media_url ? currentPost.media_url : null
+  const thumbnail = currentPost?.thumbnail_url ?? null
 
   // Auto-collapse to mini when navigating away from music tab
   useEffect(() => {
@@ -21,6 +22,11 @@ export default function Player() {
       exitNowPlaying()
     }
   }, [location.pathname])
+
+  // Collapse description when track changes
+  useEffect(() => {
+    setDescExpanded(false)
+  }, [currentPost?.id])
 
   // Load new source when currentPost changes
   useEffect(() => {
@@ -45,7 +51,8 @@ export default function Player() {
     else video.pause()
   }, [isPlaying])
 
-  const upNext = playlist.filter(p => p.id !== currentPost?.id)
+  const currentIdx = playlist.findIndex(p => p.id === currentPost?.id)
+  const upNext = currentIdx >= 0 ? playlist.slice(currentIdx + 1) : []
 
   function expandPlayer() {
     navigate('/')
@@ -80,7 +87,21 @@ export default function Player() {
             <div style={styles.nowPlayingMeta}>
               <p style={styles.nowPlayingTitle}>{currentPost.title}</p>
               {currentPost.description && (
-                <p style={styles.nowPlayingDesc}>{currentPost.description}</p>
+                <div>
+                  <p style={{
+                    ...styles.nowPlayingDesc,
+                    whiteSpace: 'pre-wrap',
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: descExpanded ? 'unset' : 3,
+                    WebkitBoxOrient: 'vertical',
+                  }}>{currentPost.description}</p>
+                  {currentPost.description.split('\n').length > 3 || currentPost.description.length > 200 ? (
+                    <span style={styles.descToggle} onClick={() => setDescExpanded(p => !p)}>
+                      {descExpanded ? 'show less' : 'show more'}
+                    </span>
+                  ) : null}
+                </div>
               )}
               <div style={styles.overlayControls}>
                 <button style={styles.ctrlBtn} onClick={prev}>‹‹</button>
@@ -91,20 +112,23 @@ export default function Player() {
               </div>
             </div>
 
-            {upNext.length > 0 && (
+            {playlist.length > 1 && (
               <div style={styles.upNextSection}>
                 <p style={styles.upNextLabel}>up next</p>
-                {upNext.map(p => (
-                  <div key={p.id} style={styles.upNextItem} onClick={() => loadPost(p, playlist)}>
-                    <div style={styles.upNextThumb}>
-                      {p.thumbnail_path
-                        ? <img src={`/uploads/${p.thumbnail_path}`} alt={p.title} style={styles.upNextThumbImg} />
-                        : <div style={styles.upNextThumbPlaceholder}>▶</div>
-                      }
+                {[...playlist.slice(currentIdx + 1), ...playlist.slice(0, currentIdx)].map((p, i, arr) => {
+                  const isPast = i >= arr.length - currentIdx
+                  return (
+                    <div key={p.id} style={{ ...styles.upNextItem, opacity: isPast ? 0.45 : 1 }} onClick={() => loadPost(p, playlist)}>
+                      <div style={styles.upNextThumb}>
+                        {p.thumbnail_url
+                          ? <img src={p.thumbnail_url} alt={p.title} style={styles.upNextThumbImg} />
+                          : <div style={styles.upNextThumbPlaceholder}>▶</div>
+                        }
+                      </div>
+                      <span style={styles.upNextItemTitle}>{p.title}</span>
                     </div>
-                    <span style={styles.upNextItemTitle}>{p.title}</span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -216,6 +240,13 @@ const styles = {
     color: 'var(--text-muted)',
     margin: 0,
     lineHeight: '1.5',
+  },
+  descToggle: {
+    fontSize: '12px',
+    color: 'var(--accent)',
+    cursor: 'pointer',
+    marginTop: '4px',
+    display: 'inline-block',
   },
   overlayControls: {
     display: 'flex',

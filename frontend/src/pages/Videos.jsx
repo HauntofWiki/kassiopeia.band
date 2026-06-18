@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listPosts } from '../api'
 import { usePlayer } from '../context/PlayerContext'
+import { usePageMeta } from '../utils/usePageMeta'
 
 export default function Videos() {
+  usePageMeta('music')
   const navigate = useNavigate()
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,7 +62,7 @@ function VideoCard({ post, onPlay, onView, nowPlaying, pinned }) {
     <div style={{ ...styles.card, ...(nowPlaying ? styles.nowPlayingCard : pinned ? styles.pinnedCard : {}) }}>
       <div style={styles.thumbWrap} onClick={() => onPlay(post)}>
         {post.thumbnail_path ? (
-          <img src={`/uploads/${post.thumbnail_path}`} alt={post.title} style={styles.thumb} />
+          <img src={post.thumbnail_url} alt={post.title} style={styles.thumb} />
         ) : (
           <div style={styles.thumbPlaceholder}>▶</div>
         )}

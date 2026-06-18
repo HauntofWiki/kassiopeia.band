@@ -1,8 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 
 const TABS = [
+  { label: 'feed', path: '/feed' },
   { label: 'music', path: '/' },
-  { label: 'blog', path: '/blog' },
   { label: 'shows', path: '/shows' },
   { label: 'releases', path: '/releases' },
   { label: 'about', path: '/about' },

@@ -65,6 +65,29 @@ class Session(Base):
     user = relationship("User", back_populates="sessions")
 
 
+class SocialLink(Base):
+    __tablename__ = "social_links"
+
+    id = Column(Integer, primary_key=True)
+    label = Column(String(50), nullable=False)
+    url = Column(String(500), nullable=False)
+    icon = Column(String(50), nullable=False)
+    sort_order = Column(Integer, default=100, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    type = Column(String(20), nullable=False)  # 'reply', 'quote'
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False)
+    from_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 
