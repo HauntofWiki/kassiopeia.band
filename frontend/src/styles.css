@@ -120,6 +120,37 @@ button:disabled {
   filter: brightness(0);
 }
 
+/* ── Inline "Listen on fm.kass.fm" mini-pill (post metadata rows) ──── */
+.listen-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.listen-inline:hover {
+  background: var(--accent);
+  color: #000;
+  text-decoration: none;
+}
+.listen-inline:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+}
+.listen-inline img {
+  width: 11px;
+  height: 11px;
+}
+
 /* ── Markdown rendered content ─────────────────────────────────────── */
 .md-preview ul, .md-preview ol {
   padding-left: 1.5em;
