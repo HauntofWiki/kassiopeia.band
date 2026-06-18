@@ -12,6 +12,8 @@
   --text-muted: #666;
   --accent: #00e8c8;
   --accent-hover: #33efd4;
+  --listen-accent: #ff9500;
+  --listen-accent-hover: #ffae33;
   --title: #00e8c8;
   --error: #ff4444;
 }
@@ -91,32 +93,36 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  background: var(--accent);
-  color: #000;
-  border: 1px solid var(--accent);
+  padding: 5px 12px;
+  background: transparent;
+  color: var(--listen-accent);
+  border: 1px solid var(--listen-accent);
   border-radius: 999px;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: bold;
   letter-spacing: 0.04em;
   text-decoration: none;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
 .listen-free-pill:hover {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: var(--listen-accent);
+  border-color: var(--listen-accent);
   color: #000;
   text-decoration: none;
 }
 .listen-free-pill:focus-visible {
-  outline: 2px solid var(--accent-hover);
+  outline: 2px solid var(--listen-accent-hover);
   outline-offset: 2px;
 }
 .listen-free-pill img {
-  width: 16px;
-  height: 16px;
+  width: 13px;
+  height: 13px;
+  filter: brightness(0) saturate(100%) invert(60%) sepia(95%) saturate(2000%) hue-rotate(360deg) brightness(105%) contrast(105%);
+  transition: filter 0.15s;
+}
+.listen-free-pill:hover img {
   filter: brightness(0);
 }
 
