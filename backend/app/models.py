@@ -65,6 +65,17 @@ class Session(Base):
     user = relationship("User", back_populates="sessions")
 
 
+class SocialLink(Base):
+    __tablename__ = "social_links"
+
+    id = Column(Integer, primary_key=True)
+    label = Column(String(50), nullable=False)
+    url = Column(String(500), nullable=False)
+    icon = Column(String(50), nullable=False)
+    sort_order = Column(Integer, default=100, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 

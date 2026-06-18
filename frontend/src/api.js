@@ -124,3 +124,9 @@ export const uploadAvatar = (file) => {
     return res.json()
   })
 }
+
+export const getLinks = () => request('/links')
+export const getAllLinks = () => request('/links/all')
+export const createLink = (body) => request('/links', { method: 'POST', body: JSON.stringify(body) })
+export const updateLink = (id, body) => request(`/links/${id}`, { method: 'PUT', body: JSON.stringify(body) })
+export const deleteLink = (id) => request(`/links/${id}`, { method: 'DELETE' })

@@ -10,8 +10,8 @@ from sqlalchemy import text
 
 from app.auth import hash_password
 from app.database import Base, SessionLocal, engine
-from app.models import User
-from app.routers import admin, auth, posts, users
+from app.models import SocialLink, User
+from app.routers import admin, auth, links, posts, users
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="kassiopeia.band API")
@@ -30,6 +30,7 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(users.router)
 app.include_router(posts.router)
+app.include_router(links.router)
 
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/uploads")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR, check_dir=False), name="uploads")
@@ -82,11 +83,40 @@ def _migrate():
         db.execute(text(
             "UPDATE users SET role = 'admin' WHERE is_admin = TRUE AND role = 'user'"
         ))
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS social_links (
+                id SERIAL PRIMARY KEY,
+                label VARCHAR(50) NOT NULL,
+                url VARCHAR(500) NOT NULL,
+                icon VARCHAR(50) NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 100,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE
+            )
+        """))
         db.commit()
+        _seed_links(db)
     except Exception:
         db.rollback()
     finally:
         db.close()
+
+
+def _seed_links(db):
+    if db.query(SocialLink).count() > 0:
+        return
+    defaults = [
+        ("Spotify",     "https://open.spotify.com/album/5PfHD7DPWOB8yLVEeGLSnz", "spotify",    1),
+        ("Bandcamp",    "https://kassiopeiawillbeheard.bandcamp.com/",              "bandcamp",   2),
+        ("YouTube",     "https://www.youtube.com/@kassiopeiawillbeheard",           "youtube",    3),
+        ("Apple Music", "https://music.apple.com/us/artist/kassiopeia/1859287331",  "apple",      4),
+        ("Instagram",   "https://www.instagram.com/kassiopeia.will.be.heard/",      "instagram",  5),
+        ("SoundCloud",  "https://soundcloud.com/kassiopeiawillbeheard/",            "soundcloud", 6),
+        ("TikTok",      "https://www.tiktok.com/@kassiopeiawillbeheard/",           "tiktok",     7),
+        ("Bluesky",     "https://bsky.app",                                         "bluesky",    8),
+    ]
+    for label, url, icon, order in defaults:
+        db.add(SocialLink(label=label, url=url, icon=icon, sort_order=order))
+    db.commit()
 
 
 def _seed_admin():
