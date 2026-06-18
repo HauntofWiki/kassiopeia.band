@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listPosts } from '../api'
+import { usePageMeta } from '../utils/usePageMeta'
 
 export default function Blog() {
+  usePageMeta('blog')
   const navigate = useNavigate()
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -39,7 +41,7 @@ export default function Blog() {
                   </span>
                 </div>
                 {p.thumbnail_path && (
-                  <img src={`/uploads/${p.thumbnail_path}`} alt={p.title} style={styles.thumb} />
+                  <img src={p.thumbnail_url} alt={p.title} style={styles.thumb} />
                 )}
               </div>
             ))}

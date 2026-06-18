@@ -27,19 +27,15 @@ export function PlayerProvider({ children }) {
   function next() {
     if (!currentPost || !playlist.length) return
     const idx = playlist.findIndex(p => p.id === currentPost.id)
-    if (idx >= 0 && idx < playlist.length - 1) {
-      setCurrentPost(playlist[idx + 1])
-      setIsPlaying(true)
-    }
+    setCurrentPost(playlist[(idx + 1) % playlist.length])
+    setIsPlaying(true)
   }
 
   function prev() {
     if (!currentPost || !playlist.length) return
     const idx = playlist.findIndex(p => p.id === currentPost.id)
-    if (idx > 0) {
-      setCurrentPost(playlist[idx - 1])
-      setIsPlaying(true)
-    }
+    setCurrentPost(playlist[(idx - 1 + playlist.length) % playlist.length])
+    setIsPlaying(true)
   }
 
   return (

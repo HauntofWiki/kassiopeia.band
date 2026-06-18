@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listPosts } from '../api'
+import { usePageMeta } from '../utils/usePageMeta'
 
 export default function Releases() {
+  usePageMeta('releases')
   const navigate = useNavigate()
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -26,7 +28,7 @@ export default function Releases() {
               <div key={p.id} style={styles.card} onClick={() => navigate(`/post/${p.id}`)}>
                 <div style={styles.artWrap}>
                   {p.thumbnail_path ? (
-                    <img src={`/uploads/${p.thumbnail_path}`} alt={p.title} style={styles.art} />
+                    <img src={p.thumbnail_url} alt={p.title} style={styles.art} />
                   ) : (
                     <div style={styles.artPlaceholder}>♪</div>
                   )}
@@ -51,9 +53,9 @@ const styles = {
   body: { maxWidth: '900px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' },
   sectionLabel: { color: 'var(--accent)', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 },
   muted: { color: 'var(--text-muted)', fontSize: '13px' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '24px' },
-  card: { cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '8px' },
-  artWrap: { aspectRatio: '1', background: 'var(--surface)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' },
+  grid: { display: 'flex', flexWrap: 'wrap', gap: '24px' },
+  card: { cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '8px', width: '150px', flexShrink: 0 },
+  artWrap: { width: '150px', height: '150px', background: 'var(--surface)', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border)' },
   art: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   artPlaceholder: {
     width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',

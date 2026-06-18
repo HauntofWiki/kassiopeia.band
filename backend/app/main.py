@@ -11,7 +11,7 @@ from sqlalchemy import text
 from app.auth import hash_password
 from app.database import Base, SessionLocal, engine
 from app.models import SocialLink, User
-from app.routers import admin, auth, links, posts, users
+from app.routers import admin, auth, links, notifications, posts, users
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="kassiopeia.band API")
@@ -20,7 +20,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://kassiopeia.band"],
+    allow_origins=["http://localhost:5173", "https://kassiopeia.band", "https://kass.fm"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,6 +31,7 @@ app.include_router(admin.router)
 app.include_router(users.router)
 app.include_router(posts.router)
 app.include_router(links.router)
+app.include_router(notifications.router)
 
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/uploads")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR, check_dir=False), name="uploads")
@@ -95,6 +96,23 @@ def _migrate():
         """))
         db.commit()
         _seed_links(db)
+    except Exception:
+        db.rollback()
+
+    # Separate migration blocks so one failure doesn't roll back others
+    try:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                type VARCHAR(20) NOT NULL,
+                post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+                from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                is_read BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """))
+        db.commit()
     except Exception:
         db.rollback()
     finally:

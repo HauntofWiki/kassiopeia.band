@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { createPost, deletePost, getPost, listReplies, pinPost, unpinPost, updatePost } from '../api'
 import { useAuth } from '../App'
+import { usePageMeta } from '../utils/usePageMeta'
 import EditPost from './EditPost'
 
 // ── Compose modal (used for both new replies and editing) ────────────────────
 
 function ComposeModal({ postId, quotedPost, editingPost, onClose, onPosted, onEdited }) {
   const isEdit = !!editingPost
+  const { user: currentUser } = useAuth()
+  const canAttachMedia = currentUser?.role === 'admin' || currentUser?.role === 'contributor'
 
   const [description, setDescription] = useState(editingPost?.description || '')
   const [musicSong, setMusicSong] = useState(editingPost?.music_song || '')
@@ -21,7 +24,6 @@ function ComposeModal({ postId, quotedPost, editingPost, onClose, onPosted, onEd
   const [showMusic, setShowMusic] = useState(
     !!(editingPost?.music_song || editingPost?.music_artist || editingPost?.music_album)
   )
-  const [postToFeed, setPostToFeed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const textareaRef = useRef(null)
@@ -62,7 +64,6 @@ function ComposeModal({ postId, quotedPost, editingPost, onClose, onPosted, onEd
         form.append('parent_post_id', postId)
         if (quotedPost) form.append('quoted_post_id', quotedPost.id)
         if (file) form.append('media', file)
-        if (postToFeed) form.append('show_in_feed', 'true')
         result = await createPost(form)
         if (preview) URL.revokeObjectURL(preview.url)
         onPosted(result)
@@ -100,8 +101,8 @@ function ComposeModal({ postId, quotedPost, editingPost, onClose, onPosted, onEd
         )}
 
         <form onSubmit={handleSubmit} style={styles.composeForm}>
-          {/* Media — only for new replies, not edits */}
-          {!isEdit && (
+          {/* Media — only for new replies by admin/contributor */}
+          {!isEdit && canAttachMedia && (
             <>
               {preview ? (
                 <div style={styles.previewWrap}>
@@ -157,17 +158,6 @@ function ComposeModal({ postId, quotedPost, editingPost, onClose, onPosted, onEd
           {error && <span style={styles.errorText}>{error}</span>}
 
           <div style={styles.composeActions}>
-            {!isEdit && (
-              <label style={styles.feedToggle}>
-                <input
-                  type="checkbox"
-                  checked={postToFeed}
-                  onChange={(e) => setPostToFeed(e.target.checked)}
-                  style={{ marginRight: '6px' }}
-                />
-                post to feed
-              </label>
-            )}
             <button
               type="submit"
               style={{ ...styles.btn, marginLeft: 'auto', opacity: (!canSubmit || submitting) ? 0.5 : 1 }}
@@ -236,6 +226,9 @@ function ReplyCard({ reply, replyById, user, onQuote, onEdit, onDelete, navigate
       )}
 
       <div style={styles.replyMeta}>
+        {reply.user.profile_picture && (
+          <img src={reply.user.profile_picture} alt="" style={styles.replyAvatar} />
+        )}
         <span style={styles.replyAuthor} onClick={() => navigate('/')}>
           @{reply.user.username}
         </span>
@@ -275,6 +268,9 @@ export default function Post() {
   const [editOpen, setEditOpen] = useState(false)
 
   const didScrollRef = useRef(false)
+
+  const ogImage = post?.thumbnail_url ?? (post?.media_type === 'image' ? post?.media_url : undefined)
+  usePageMeta(post?.title, { description: post?.description, image: ogImage, type: 'article' })
 
   useEffect(() => {
     didScrollRef.current = false
@@ -338,7 +334,7 @@ export default function Post() {
   if (!post) return null
 
   const isOwn = user?.username === post.user.username
-  const descHtml = post.description ? DOMPurify.sanitize(marked.parse(post.description)) : null
+  const descHtml = null // description rendered as plain text below
   const bodyHtml = post.body ? DOMPurify.sanitize(marked.parse(post.body)) : null
   const hasMusic = post.music_song || post.music_artist || post.music_album
   const replyById = Object.fromEntries(replies.map((r) => [r.id, r]))
@@ -348,14 +344,21 @@ export default function Post() {
     <div className="page-body" style={styles.body}>
 
         {/* Post media */}
-        <div style={styles.mediaWrap}>
-          {post.media_type === 'video'
-            ? <video src={post.media_url} controls style={styles.media} />
-            : <img src={post.media_url} alt={post.title} style={styles.media} />}
-        </div>
+        {post.media_path && (
+          <div style={styles.mediaWrap}>
+            {post.media_type === 'video'
+              ? <video src={post.media_url} controls style={styles.media} />
+              : <img src={post.media_url} alt={post.title} style={styles.media} />}
+          </div>
+        )}
 
         {/* Post meta */}
         <div style={styles.meta}>
+          {post.parent_post_id && (
+            <span style={styles.backLink} onClick={() => navigate(`/post/${post.parent_post_id}`)}>
+              ← back
+            </span>
+          )}
           <div style={styles.titleRow}>
             <h1 style={styles.title}>{post.title}</h1>
             {(isOwn || user?.role === 'admin') && (
@@ -412,11 +415,11 @@ export default function Post() {
             </div>
           )}
 
-          {descHtml && (
-            <div style={styles.description} dangerouslySetInnerHTML={{ __html: descHtml }} />
+          {post.description && (
+            <p style={{ ...styles.description, whiteSpace: 'pre-wrap', margin: 0 }}>{post.description}</p>
           )}
           {bodyHtml && (
-            <div style={styles.body_content} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
+            <div className="md-preview" style={styles.body_content} dangerouslySetInnerHTML={{ __html: bodyHtml }} />
           )}
         </div>
 
@@ -504,6 +507,7 @@ const styles = {
   titleRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' },
   title: { fontSize: '22px', fontWeight: 'bold', margin: 0 },
   actions: { display: 'flex', gap: '14px', flexShrink: 0, paddingTop: '4px' },
+  backLink: { color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px' },
   actionLink: { color: 'var(--accent)', cursor: 'pointer', fontSize: '13px' },
   actionDanger: { color: 'var(--error)', cursor: 'pointer', fontSize: '13px' },
   byline: { display: 'flex', gap: '12px', alignItems: 'center' },
@@ -553,6 +557,7 @@ const styles = {
     borderRadius: '2px',
   },
   replyMeta: { display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' },
+  replyAvatar: { width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 },
   replyAuthor: { color: 'var(--accent)', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' },
   titleBadge: { color: 'var(--title, #00e8c8)', fontSize: '13px' },
   titleSep: { color: 'var(--title, #00e8c8)' },
@@ -616,7 +621,6 @@ const styles = {
     color: 'inherit', fontFamily: 'inherit', fontSize: '13px', padding: '7px 10px',
   },
   composeActions: { display: 'flex', alignItems: 'center' },
-  feedToggle: { color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' },
   btn: {
     background: 'var(--accent)', color: '#000', border: 'none', borderRadius: '4px',
     padding: '6px 20px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold',

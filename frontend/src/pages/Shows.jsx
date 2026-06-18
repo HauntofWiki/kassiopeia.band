@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { listPosts } from '../api'
+import { usePageMeta } from '../utils/usePageMeta'
 
 export default function Shows() {
+  usePageMeta('shows')
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
 

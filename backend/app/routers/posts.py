@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user, get_optional_current_user, require_contributor
 from ..database import get_db
-from ..models import Post, User
+from ..models import Notification, Post, User
 from .. import storage
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
@@ -111,9 +111,11 @@ async def create_post(
     show_venue: Optional[str] = Form(None),
     show_ticket_url: Optional[str] = Form(None),
     is_published: bool = Form(False),
+    sort_order: Optional[int] = Form(None),
     parent_post_id: Optional[int] = Form(None),
     quoted_post_id: Optional[int] = Form(None),
     media: Optional[UploadFile] = File(None),
+    link_media_post_id: Optional[int] = Form(None),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -194,6 +196,13 @@ async def create_post(
                         os.unlink(p)
         media_path = key
 
+    if not media_path and link_media_post_id:
+        source = db.get(Post, link_media_post_id)
+        if source and source.media_path:
+            media_path = source.media_path
+            media_type = source.media_type
+            thumbnail_path = source.thumbnail_path
+
     from datetime import date as date_type
     parsed_show_date = None
     if show_date:
@@ -219,12 +228,29 @@ async def create_post(
         show_venue=show_venue.strip() if show_venue else None,
         show_ticket_url=show_ticket_url.strip() if show_ticket_url else None,
         is_published=is_published,
+        sort_order=sort_order if sort_order is not None else 1000,
         parent_post_id=parent_post_id,
         quoted_post_id=quoted_post_id,
     )
     db.add(post)
     db.commit()
     db.refresh(post)
+
+    # Notifications
+    if is_reply:
+        # Notify all admins/contributors except the poster
+        targets = db.query(User).filter(
+            User.role.in_(["admin", "contributor"]),
+            User.id != current_user.id,
+        ).all()
+        for u in targets:
+            db.add(Notification(user_id=u.id, type="reply", post_id=post.id, from_user_id=current_user.id))
+    if quoted_post_id:
+        quoted = db.get(Post, quoted_post_id)
+        if quoted and quoted.user_id != current_user.id:
+            db.add(Notification(user_id=quoted.user_id, type="quote", post_id=post.id, from_user_id=current_user.id))
+    db.commit()
+
     return _post_dict(post)
 
 
@@ -232,7 +258,7 @@ async def create_post(
 def public_feed(limit: int = 50, offset: int = 0, db: Session = Depends(get_db)):
     pinned = db.query(Post).filter(Post.is_pinned == True, Post.parent_post_id == None).first()
     q = db.query(Post).filter(Post.parent_post_id == None, Post.is_published == True)
-    posts = q.order_by(Post.created_at.desc()).offset(offset).limit(limit).all()
+    posts = q.order_by(Post.sort_order.asc(), Post.created_at.desc()).offset(offset).limit(limit).all()
     result = []
     if pinned and offset == 0:
         result.append(_post_dict(pinned))
@@ -282,7 +308,7 @@ def get_feed(
 ):
     # All published root posts — no follow graph needed
     q = db.query(Post).filter(Post.parent_post_id == None, Post.is_published == True)
-    posts = q.order_by(Post.created_at.desc()).offset(offset).limit(limit).all()
+    posts = q.order_by(Post.sort_order.asc(), Post.created_at.desc()).offset(offset).limit(limit).all()
     return [_post_dict(p) for p in posts]
 
 
@@ -293,6 +319,7 @@ def list_posts(
     type: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
+    has_media: bool = False,
     db: Session = Depends(get_db),
     viewer=Depends(get_optional_current_user),
 ):
@@ -300,6 +327,8 @@ def list_posts(
     q = db.query(Post).join(User)
     if not tag:
         q = q.filter(Post.parent_post_id == None)
+    if has_media:
+        q = q.filter(Post.media_path != None)
     if username:
         q = q.filter(User.username == username)
     if tag:
@@ -354,6 +383,7 @@ async def update_post(
     is_published: Optional[bool] = Form(None),
     sort_order: Optional[int] = Form(None),
     media: Optional[UploadFile] = File(None),
+    link_media_post_id: Optional[int] = Form(None),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -393,6 +423,13 @@ async def update_post(
         post.is_published = is_published
     if sort_order is not None:
         post.sort_order = sort_order
+
+    if link_media_post_id and not (media and media.filename):
+        source = db.get(Post, link_media_post_id)
+        if source and source.media_path:
+            post.media_path = source.media_path
+            post.media_type = source.media_type
+            post.thumbnail_path = source.thumbnail_path
 
     if media and media.filename:
         contents = await media.read()
@@ -464,6 +501,9 @@ def delete_post(
     for key in [post.media_path, post.thumbnail_path]:
         storage.delete_file(key)
 
+    db.query(Post).filter(Post.quoted_post_id == post_id).update({"quoted_post_id": None}, synchronize_session=False)
+    db.query(Post).filter(Post.parent_post_id == post_id).update({"parent_post_id": None}, synchronize_session=False)
+    db.flush()
     db.delete(post)
     db.commit()
     return {"ok": True}

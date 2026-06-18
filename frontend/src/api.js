@@ -30,6 +30,7 @@ export const signup = (username, email, password) =>
 export const logout = () => request('/auth/logout', { method: 'POST' })
 
 export const listAdminUsers = () => request('/admin/users')
+export const createAdminUser = (body) => request('/admin/users', { method: 'POST', body: JSON.stringify(body) })
 export const setUserRole = (username, role) =>
   request(`/admin/users/${username}/role`, { method: 'PUT', body: JSON.stringify({ role }) })
 export const deleteUser = (username) => request(`/admin/users/${username}`, { method: 'DELETE' })
@@ -63,6 +64,12 @@ export const listPosts = (username, tag, type) => {
   if (type) params.set('type', type)
   const qs = params.toString()
   return request(`/posts${qs ? `?${qs}` : ''}`)
+}
+
+export const listPostsWithMedia = (type) => {
+  const params = new URLSearchParams({ has_media: 'true', limit: '200' })
+  if (type) params.set('type', type)
+  return request(`/posts?${params}`)
 }
 
 export const listReplies = (postId) => request(`/posts/${postId}/replies`)
@@ -124,6 +131,11 @@ export const uploadAvatar = (file) => {
     return res.json()
   })
 }
+
+export const getNotifications = () => request('/notifications')
+export const getUnreadCount = () => request('/notifications/unread-count')
+export const markAllRead = () => request('/notifications/read-all', { method: 'POST' })
+export const dismissNotification = (id) => request(`/notifications/${id}`, { method: 'DELETE' })
 
 export const getLinks = () => request('/links')
 export const getAllLinks = () => request('/links/all')

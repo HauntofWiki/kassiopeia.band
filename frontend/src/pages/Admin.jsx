@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createLink, deleteLink, getAllLinks, updateLink, deleteUser, listAdminUsers, setUserRole } from '../api'
+import { createLink, deleteLink, getAllLinks, updateLink, createAdminUser, deleteUser, listAdminUsers, setUserRole } from '../api'
 
 const emptyLink = { label: '', url: '', icon: '', sort_order: 100, is_active: true }
 
@@ -14,6 +14,15 @@ export default function Admin() {
   const [links, setLinks] = useState([])
   const [editingLink, setEditingLink] = useState(null)
   const [newLink, setNewLink] = useState(null)
+  const [newUser, setNewUser] = useState(null)
+
+  async function handleCreateUser(data) {
+    try {
+      const result = await createAdminUser(data)
+      setMembers(prev => [...prev, { username: result.username, role: result.role, display_name: result.username, created_at: new Date().toISOString() }])
+      setNewUser(null)
+    } catch (e) { setError(e.message) }
+  }
 
   useEffect(() => {
     getAllLinks().then(setLinks).catch(() => {})
@@ -123,6 +132,24 @@ export default function Admin() {
               </tbody>
             </table>
           )}
+        {newUser ? (
+          <div style={styles.newUserForm}>
+            <input style={styles.input} placeholder="username" value={newUser.username} onChange={e => setNewUser(p => ({ ...p, username: e.target.value }))} />
+            <input style={styles.input} placeholder="email" value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))} />
+            <input style={styles.input} placeholder="password" type="password" value={newUser.password} onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))} />
+            <select style={styles.input} value={newUser.role} onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))}>
+              <option value="user">user</option>
+              <option value="contributor">contributor</option>
+              <option value="admin">admin</option>
+            </select>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <span style={styles.action} onClick={() => handleCreateUser(newUser)}>create</span>
+              <span style={styles.action} onClick={() => setNewUser(null)}>cancel</span>
+            </div>
+          </div>
+        ) : (
+          <span style={styles.action} onClick={() => setNewUser({ username: '', email: '', password: '', role: 'contributor' })}>+ create account</span>
+        )}
 
         <p style={styles.muted}>social links</p>
 
@@ -218,4 +245,5 @@ const styles = {
   action: { color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px' },
   danger: { color: 'var(--error)', cursor: 'pointer', fontSize: '12px' },
   input: { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'inherit', fontSize: '12px', padding: '4px 6px', borderRadius: '3px', width: '100%' },
+  newUserForm: { display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 300 },
 }

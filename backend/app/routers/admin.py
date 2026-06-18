@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.auth import require_admin
+from app.auth import hash_password, require_admin
 from app.database import get_db
 from app.models import User
 
@@ -25,6 +25,37 @@ def list_users(
         }
         for u in users
     ]
+
+
+class CreateUserBody(BaseModel):
+    username: str
+    email: str
+    password: str
+    role: str = "user"
+
+
+@router.post("/users")
+def create_user(
+    req: CreateUserBody,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    if req.role not in ("user", "contributor", "admin"):
+        raise HTTPException(400, "Invalid role")
+    if db.query(User).filter(User.username == req.username).first():
+        raise HTTPException(400, "Username already taken")
+    if db.query(User).filter(User.email == req.email).first():
+        raise HTTPException(400, "Email already registered")
+    user = User(
+        username=req.username,
+        email=req.email,
+        password_hash=hash_password(req.password),
+        display_name=req.username,
+        role=req.role,
+    )
+    db.add(user)
+    db.commit()
+    return {"ok": True, "username": user.username, "role": user.role}
 
 
 class SetRoleBody(BaseModel):
