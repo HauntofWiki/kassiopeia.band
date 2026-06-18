@@ -1,6 +1,5 @@
-import os
+import io
 import time
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from PIL import Image, ImageOps
@@ -10,11 +9,10 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user, get_optional_current_user, hash_password, verify_password
 from app.database import get_db
 from app.models import User
+from app import storage
 
 router = APIRouter(prefix="/api/users")
 
-UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/uploads")
-AVATAR_DIR = os.path.join(UPLOAD_DIR, "avatars")
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif"}
 MAX_AVATAR_BYTES = 10 * 1024 * 1024
 
@@ -25,7 +23,7 @@ def _user_public(user: User) -> dict:
         "display_name": user.display_name,
         "title": user.title,
         "bio": user.bio,
-        "profile_picture": user.profile_picture,
+        "profile_picture": storage.media_url(user.profile_picture),
         "role": user.role,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
@@ -68,28 +66,26 @@ async def upload_avatar(
     if len(content) > MAX_AVATAR_BYTES:
         raise HTTPException(400, "Image too large (max 10MB)")
 
-    Path(AVATAR_DIR).mkdir(parents=True, exist_ok=True)
-
     ext = "jpg"
     if file.filename and "." in file.filename:
         ext = file.filename.rsplit(".", 1)[-1].lower()
     filename = f"{user.username}_{int(time.time())}.{ext}"
-    filepath = os.path.join(AVATAR_DIR, filename)
-
-    with open(filepath, "wb") as f:
-        f.write(content)
+    key = f"avatars/{filename}"
 
     try:
-        img = Image.open(filepath)
+        img = Image.open(io.BytesIO(content))
         img = ImageOps.exif_transpose(img)
         img.thumbnail((400, 400))
-        img.save(filepath)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG")
+        content = buf.getvalue()
     except Exception:
         pass
 
-    user.profile_picture = f"/uploads/avatars/{filename}"
+    storage.upload_file(content, key, "image/jpeg")
+    user.profile_picture = key
     db.commit()
-    return {"profile_picture": user.profile_picture}
+    return {"profile_picture": storage.media_url(key)}
 
 
 class ChangePasswordRequest(BaseModel):

@@ -41,7 +41,7 @@ export default function Tags() {
                   </div>
                 ) : post.media_path ? (
                   <img
-                    src={`/uploads/${post.thumbnail_path || post.media_path}`}
+                    src={post.thumbnail_url || post.media_url}
                     alt={post.title}
                     style={styles.cardImg}
                   />

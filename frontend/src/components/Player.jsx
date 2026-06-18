@@ -12,8 +12,8 @@ export default function Player() {
   const navigate = useNavigate()
 
   const isVideo = currentPost?.media_type === 'video'
-  const mediaSrc = isVideo && currentPost?.media_path ? `/uploads/${currentPost.media_path}` : null
-  const thumbnail = currentPost?.thumbnail_path ? `/uploads/${currentPost.thumbnail_path}` : null
+  const mediaSrc = isVideo && currentPost?.media_url ? currentPost.media_url : null
+  const thumbnail = currentPost?.thumbnail_url ?? null
 
   // Auto-collapse to mini when navigating away from music tab
   useEffect(() => {
@@ -97,8 +97,8 @@ export default function Player() {
                 {upNext.map(p => (
                   <div key={p.id} style={styles.upNextItem} onClick={() => loadPost(p, playlist)}>
                     <div style={styles.upNextThumb}>
-                      {p.thumbnail_path
-                        ? <img src={`/uploads/${p.thumbnail_path}`} alt={p.title} style={styles.upNextThumbImg} />
+                      {p.thumbnail_url
+                        ? <img src={p.thumbnail_url} alt={p.title} style={styles.upNextThumbImg} />
                         : <div style={styles.upNextThumbPlaceholder}>▶</div>
                       }
                     </div>

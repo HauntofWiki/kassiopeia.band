@@ -209,8 +209,8 @@ function ReplyCard({ reply, replyById, user, onQuote, onEdit, onDelete, navigate
       {reply.media_path && (
         <div style={styles.replyMediaWrap}>
           {reply.media_type === 'video'
-            ? <video src={`/uploads/${reply.media_path}`} controls style={styles.replyMedia} />
-            : <img src={`/uploads/${reply.media_path}`} alt="" style={styles.replyMedia} />}
+            ? <video src={reply.media_url} controls style={styles.replyMedia} />
+            : <img src={reply.media_url} alt="" style={styles.replyMedia} />}
         </div>
       )}
 
@@ -350,8 +350,8 @@ export default function Post() {
         {/* Post media */}
         <div style={styles.mediaWrap}>
           {post.media_type === 'video'
-            ? <video src={`/uploads/${post.media_path}`} controls style={styles.media} />
-            : <img src={`/uploads/${post.media_path}`} alt={post.title} style={styles.media} />}
+            ? <video src={post.media_url} controls style={styles.media} />
+            : <img src={post.media_url} alt={post.title} style={styles.media} />}
         </div>
 
         {/* Post meta */}
