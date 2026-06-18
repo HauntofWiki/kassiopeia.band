@@ -49,6 +49,17 @@ export default function Feed() {
                   <span style={styles.date}>
                     {new Date(p.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                   </span>
+                  <a
+                    href="https://fm.kass.fm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="listen-inline"
+                    aria-label="Listen on fm.kass.fm"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <img src="/radio.svg" alt="" />
+                    <span>Listen on fm.kass.fm</span>
+                  </a>
                 </div>
                 <span style={styles.title}>{p.title}</span>
                 {p.description && <p style={styles.desc}>{p.description}</p>}

@@ -396,6 +396,16 @@ export default function Post() {
               {new Date(post.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               {post.is_edited && ' · edited'}
             </span>
+            <a
+              href="https://fm.kass.fm"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="listen-inline"
+              aria-label="Listen on fm.kass.fm"
+            >
+              <img src="/radio.svg" alt="" />
+              <span>Listen on fm.kass.fm</span>
+            </a>
           </div>
 
           {post.tags && (
