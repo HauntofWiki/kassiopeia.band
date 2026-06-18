@@ -86,6 +86,40 @@ button:disabled {
   margin-top: 6px;
 }
 
+/* ── Listen Free CTA pill (SocialBar radio entry) ──────────────────── */
+.listen-free-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--accent);
+  color: #000;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.listen-free-pill:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #000;
+  text-decoration: none;
+}
+.listen-free-pill:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+}
+.listen-free-pill img {
+  width: 16px;
+  height: 16px;
+  filter: brightness(0);
+}
+
 /* ── Markdown rendered content ─────────────────────────────────────── */
 .md-preview ul, .md-preview ol {
   padding-left: 1.5em;

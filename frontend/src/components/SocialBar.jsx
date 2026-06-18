@@ -12,11 +12,28 @@ export default function SocialBar() {
 
   return (
     <div style={styles.bar}>
-      {links.map(link => (
-        <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={styles.link} title={link.label}>
-          <img src={`/${link.icon}.svg`} alt={link.label} style={styles.icon} />
-        </a>
-      ))}
+      {links.map(link => {
+        if (link.icon === 'radio') {
+          return (
+            <a
+              key={link.id}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="listen-free-pill"
+              aria-label="Listen free on fm.kass.fm"
+            >
+              <img src={`/${link.icon}.svg`} alt="" />
+              <span>Listen Free</span>
+            </a>
+          )
+        }
+        return (
+          <a key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" style={styles.link} title={link.label}>
+            <img src={`/${link.icon}.svg`} alt={link.label} style={styles.icon} />
+          </a>
+        )
+      })}
     </div>
   )
 }
