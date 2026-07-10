@@ -15,6 +15,7 @@
       (function () {
         var s = document.createElement("script");
         s.defer = true;
+        s.async = false;
         s.dataset.domain = window.location.hostname;
         s.src = "https://stats.kassiopeia.band/js/script.outbound-links.file-downloads.js";
         document.head.appendChild(s);
