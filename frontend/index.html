@@ -11,7 +11,16 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="kassiopeia" />
     <meta name="twitter:card" content="summary_large_image" />
-    <script defer data-domain="kassiopeia.band" src="https://stats.kassiopeia.band/js/script.outbound-links.file-downloads.js"></script>
+    <script>
+      (function () {
+        var s = document.createElement("script");
+        s.defer = true;
+        s.async = false;
+        s.dataset.domain = window.location.hostname;
+        s.src = "https://stats.kassiopeia.band/js/script.outbound-links.file-downloads.js";
+        document.head.appendChild(s);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
