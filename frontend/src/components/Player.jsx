@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { usePlayer } from '../context/PlayerContext'
+import { trackComplete, trackPause, trackResume } from '../analytics'
 
 export default function Player() {
   const {
@@ -59,6 +60,18 @@ export default function Player() {
     setNowPlayingView(true)
   }
 
+  function togglePlayback() {
+    const willPlay = !isPlaying
+    setIsPlaying(willPlay)
+    if (willPlay) trackResume(currentPost)
+    else trackPause(currentPost)
+  }
+
+  function handleEnded() {
+    trackComplete(currentPost)
+    next({ auto: true })
+  }
+
   return (
     <>
       {/* Overlay — always contains the video element so it stays in DOM */}
@@ -76,7 +89,7 @@ export default function Player() {
           <video
             ref={videoRef}
             style={styles.videoEl}
-            onEnded={next}
+            onEnded={handleEnded}
             playsInline
           />
           </div>
@@ -105,7 +118,7 @@ export default function Player() {
               )}
               <div style={styles.overlayControls}>
                 <button style={styles.ctrlBtn} onClick={prev}>‹‹</button>
-                <button style={styles.ctrlBtn} onClick={() => setIsPlaying(p => !p)}>
+                <button style={styles.ctrlBtn} onClick={togglePlayback}>
                   {isPlaying ? '⏸' : '▶'}
                 </button>
                 <button style={styles.ctrlBtn} onClick={next}>››</button>
@@ -147,7 +160,7 @@ export default function Player() {
           </div>
           <div style={styles.miniControls}>
             <button style={styles.ctrlBtn} onClick={prev}>‹‹</button>
-            <button style={styles.ctrlBtn} onClick={() => setIsPlaying(p => !p)}>
+            <button style={styles.ctrlBtn} onClick={togglePlayback}>
               {isPlaying ? '⏸' : '▶'}
             </button>
             <button style={styles.ctrlBtn} onClick={next}>››</button>

@@ -1,4 +1,5 @@
 import { createContext, useContext, useRef, useState } from 'react'
+import { trackPlay, trackSkip } from '../analytics'
 
 const PlayerContext = createContext(null)
 
@@ -18,24 +19,31 @@ export function PlayerProvider({ children }) {
     if (posts.length) setPlaylist(posts)
     setIsPlaying(true)
     setNowPlayingView(true)
+    trackPlay(post)
   }
 
   function exitNowPlaying() {
     setNowPlayingView(false)
   }
 
-  function next() {
+  // opts.auto marks an auto-advance (e.g. onEnded) so it isn't double-counted
+  // as a skip on top of the "complete" event already fired for that transition.
+  function next(opts = {}) {
     if (!currentPost || !playlist.length) return
     const idx = playlist.findIndex(p => p.id === currentPost.id)
-    setCurrentPost(playlist[(idx + 1) % playlist.length])
+    const nextPost = playlist[(idx + 1) % playlist.length]
+    setCurrentPost(nextPost)
     setIsPlaying(true)
+    if (!opts.auto) trackSkip('next', nextPost)
   }
 
   function prev() {
     if (!currentPost || !playlist.length) return
     const idx = playlist.findIndex(p => p.id === currentPost.id)
-    setCurrentPost(playlist[(idx - 1 + playlist.length) % playlist.length])
+    const prevPost = playlist[(idx - 1 + playlist.length) % playlist.length]
+    setCurrentPost(prevPost)
     setIsPlaying(true)
+    trackSkip('prev', prevPost)
   }
 
   return (
