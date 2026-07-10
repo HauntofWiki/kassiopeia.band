@@ -121,7 +121,7 @@ export default function Player() {
                 <button style={styles.ctrlBtn} onClick={togglePlayback}>
                   {isPlaying ? '⏸' : '▶'}
                 </button>
-                <button style={styles.ctrlBtn} onClick={next}>››</button>
+                <button style={styles.ctrlBtn} onClick={() => next()}>››</button>
               </div>
             </div>
 
@@ -163,7 +163,7 @@ export default function Player() {
             <button style={styles.ctrlBtn} onClick={togglePlayback}>
               {isPlaying ? '⏸' : '▶'}
             </button>
-            <button style={styles.ctrlBtn} onClick={next}>››</button>
+            <button style={styles.ctrlBtn} onClick={() => next()}>››</button>
             <button style={styles.ctrlBtn} onClick={expandPlayer} title="expand">∧</button>
           </div>
         </div>
