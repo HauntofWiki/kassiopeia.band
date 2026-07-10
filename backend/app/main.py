@@ -11,7 +11,7 @@ from sqlalchemy import text
 from app.auth import hash_password
 from app.database import Base, SessionLocal, engine
 from app.models import SocialLink, User
-from app.routers import admin, auth, links, notifications, posts, users
+from app.routers import admin, auth, events, links, notifications, posts, users
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="kassiopeia.band API")
@@ -32,6 +32,7 @@ app.include_router(users.router)
 app.include_router(posts.router)
 app.include_router(links.router)
 app.include_router(notifications.router)
+app.include_router(events.router)
 
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "/uploads")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR, check_dir=False), name="uploads")
