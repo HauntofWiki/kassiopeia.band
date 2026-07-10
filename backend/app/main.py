@@ -10,8 +10,11 @@ from sqlalchemy import text
 
 from app.auth import hash_password
 from app.database import Base, SessionLocal, engine
+from app.logging_config import configure_app_logging
 from app.models import SocialLink, User
 from app.routers import admin, auth, events, links, notifications, posts, users
+
+configure_app_logging()
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="kassiopeia.band API")
