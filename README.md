@@ -23,3 +23,4 @@ kassiopeia.band/
 For full docs, see the knowledge base:
 `~/ai/claude-knowledge-base/README.md`,
 `projects/web/kassiopeia-band.md`, and `projects/personal/kassiopeia/`.
+# branch protection test 1787356731
